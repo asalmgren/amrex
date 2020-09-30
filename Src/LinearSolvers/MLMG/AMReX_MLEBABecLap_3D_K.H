@@ -30,6 +30,9 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                         Real alpha, Real beta, int ncomp,
                         bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     Real dhx = beta*dxinv[0]*dxinv[0];
     Real dhy = beta*dxinv[1]*dxinv[1];
     Real dhz = beta*dxinv[2]*dxinv[2];
@@ -98,15 +101,15 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                 Real zloc_on_xface = fcx(i,j,k,1);
 
                 if(needs_bdry_stencil) {
-                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
+                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
                                                           yloc_on_xface,zloc_on_xface,
-                                                          is_eb_dirichlet,is_eb_inhomog,
+                                                          is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
                                                           on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
                                                           on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
                 } else {
-                  fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                 yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                  fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                 yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
 
                 fxm *= bX(i,j,k,n);
@@ -139,15 +142,15 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                 Real zloc_on_xface = fcx(i+1,j,k,1);
 
                 if(needs_bdry_stencil) {
-                  fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
+                  fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
                                                           yloc_on_xface,zloc_on_xface,
-                                                          is_eb_dirichlet,is_eb_inhomog,
+                                                          is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
                                                           on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
                                                           on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
                 } else {
-                  fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                 yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                  fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                 yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
 
                 fxp *= bX(i+1,j,k,n);
@@ -181,15 +184,15 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                 Real zloc_on_yface = fcy(i,j,k,1);
 
                 if(needs_bdry_stencil) {
-                  fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
+                  fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
                                                           xloc_on_yface,zloc_on_yface,
-                                                          is_eb_dirichlet,is_eb_inhomog,
+                                                          is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
                                                           on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
                                                           on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
                 } else {
-                  fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                 xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                  fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                 xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
 
                 fym *= bY(i,j,k,n);
@@ -223,15 +226,15 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                 Real zloc_on_yface = fcy(i,j+1,k,1);
 
                 if(needs_bdry_stencil) {
-                  fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
+                  fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
                                                           xloc_on_yface,zloc_on_yface,
-                                                          is_eb_dirichlet,is_eb_inhomog,
+                                                          is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
                                                           on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
                                                           on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
                 } else {
-                  fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                 xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                  fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                 xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
 
                 fyp *= bY(i,j+1,k,n);
@@ -265,15 +268,15 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                 Real yloc_on_zface = fcz(i,j,k,1);
 
                 if(needs_bdry_stencil) {
-                  fzm = grad_z_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
+                  fzm = grad_z_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
                                                           xloc_on_zface,yloc_on_zface,
-                                                          is_eb_dirichlet,is_eb_inhomog,
+                                                          is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
                                                           on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
                                                           on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
                 } else {
-                  fzm = grad_z_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                 xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog);
+                  fzm = grad_z_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                 xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
 
                 fzm *= bZ(i,j,k,n);
@@ -307,15 +310,15 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                 Real yloc_on_zface = fcz(i,j,k+1,1);
 
                 if(needs_bdry_stencil) {
-                  fzp = grad_z_of_phi_on_centroids_extdir(i,j,k+1,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
+                  fzp = grad_z_of_phi_on_centroids_extdir(i,j,k+1,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
                                                           xloc_on_zface,yloc_on_zface,
-                                                          is_eb_dirichlet,is_eb_inhomog,
+                                                          is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
                                                           on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
                                                           on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
                 } else {
-                  fzp = grad_z_of_phi_on_centroids(i,j,k+1,n,x,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                 xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog);
+                  fzp = grad_z_of_phi_on_centroids(i,j,k+1,n,x,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                 xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
 
                 fzp *= bZ(i,j,k+1,n);
@@ -374,8 +377,8 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                     feb = dphidn * ba(i,j,k) * beb(i,j,k,n);
 
                 } else if (phi_on_centroid) {
-                    feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,
-                                                             anrmx,anrmy,anrmz,is_eb_inhomog,
+                    feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
+                                                             anrmx,anrmy,anrmz,is_eb_inhomog,vol_eps,
                                                              on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
                                                              on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
                                                              on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
@@ -407,6 +410,9 @@ void mlebabeclap_ebflux (int i, int j, int k, int n,
                          bool phi_on_centroid, bool is_eb_inhomog,
                          GpuArray<Real,AMREX_SPACEDIM> const& dxinv) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     Real dhx = dxinv[0];
 
     if (!flag(i,j,k).isSingleValued())
@@ -473,8 +479,8 @@ void mlebabeclap_ebflux (int i, int j, int k, int n,
         }
         else if (phi_on_centroid)
         {
-            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,
-                                                      anrmx,anrmy,anrmz,is_eb_inhomog);
+            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
+                                                      anrmx,anrmy,anrmz,is_eb_inhomog,vol_eps);
             feb(i,j,k,n) = -beb(i,j,k,n) * dphidn;
         }
     }
@@ -508,6 +514,9 @@ void mlebabeclap_gsrb (Box const& box,
                        Box const& vbox, int redblack, int ncomp) noexcept
 {
     constexpr Real omega = 1.15;
+
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
 
     // By the time we get here we have put the problem in residual-correction form so we
     //    treat Dirichlet bc's as homogeneous bc's
@@ -610,8 +619,9 @@ void mlebabeclap_gsrb (Box const& box,
                                (apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
                         Real yloc_on_xface = fcx(i,j,k,0);
                         Real zloc_on_xface = fcx(i,j,k,1);
-                        fxm = grad_x_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                         yloc_on_xface,zloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fxm = grad_x_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                         yloc_on_xface,zloc_on_xface,is_eb_dirichlet,
+                                                         treat_eb_as_inhomog,vol_eps);
                         fxm *= bX(i,j,k,n);
                         oxm = 0.0;
                     }
@@ -649,8 +659,9 @@ void mlebabeclap_gsrb (Box const& box,
                               (apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) ) {
                         Real yloc_on_xface = fcx(i+1,j,k,0);
                         Real zloc_on_xface = fcx(i+1,j,k,1);
-                        fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                         yloc_on_xface,zloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                         yloc_on_xface,zloc_on_xface,is_eb_dirichlet,
+                                                         treat_eb_as_inhomog,vol_eps);
                         fxp *= bX(i+1,j,k,n);
                         oxp = 0.0;
                     }
@@ -687,8 +698,9 @@ void mlebabeclap_gsrb (Box const& box,
                                (apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
                         Real xloc_on_yface = fcy(i,j,k,0);
                         Real zloc_on_yface = fcy(i,j,k,1);
-                        fym = grad_y_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                         xloc_on_yface,zloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fym = grad_y_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                         xloc_on_yface,zloc_on_yface,is_eb_dirichlet,
+                                                         treat_eb_as_inhomog,vol_eps);
                         fym *= bY(i,j,k,n);
                         oym = 0.0;
                     }
@@ -725,8 +737,9 @@ void mlebabeclap_gsrb (Box const& box,
                               (apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0) ) {
                        Real xloc_on_yface = fcy(i,j+1,k,0);
                        Real zloc_on_yface = fcy(i,j+1,k,1);
-                       fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                        xloc_on_yface,zloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog);
+                       fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                        xloc_on_yface,zloc_on_yface,is_eb_dirichlet,
+                                                        treat_eb_as_inhomog,vol_eps);
                        fyp *= bY(i,j+1,k,n);
                         oyp = 0.0;
                     }
@@ -763,8 +776,9 @@ void mlebabeclap_gsrb (Box const& box,
                                (apzm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j,k-1) != 1.0) ) {
                         Real xloc_on_zface = fcz(i,j,k,0);
                         Real yloc_on_zface = fcz(i,j,k,1);
-                        fzm = grad_y_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                         xloc_on_zface,yloc_on_zface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fzm = grad_y_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                         xloc_on_zface,yloc_on_zface,is_eb_dirichlet,
+                                                         treat_eb_as_inhomog,vol_eps);
                         fzm *= bZ(i,j,k,n);
                         ozm = 0.0;
                     }
@@ -801,8 +815,9 @@ void mlebabeclap_gsrb (Box const& box,
                                (apzp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j,k+1) != 1.0) ) {
                         Real xloc_on_zface = fcz(i,j,k+1,0);
                         Real yloc_on_zface = fcz(i,j,k+1,1);
-                        fzp = grad_z_of_phi_on_centroids(i,j,k+1,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                         xloc_on_zface,yloc_on_zface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fzp = grad_z_of_phi_on_centroids(i,j,k+1,n,phi,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                         xloc_on_zface,yloc_on_zface,is_eb_dirichlet,
+                                                         treat_eb_as_inhomog,vol_eps);
                         fzp *= bZ(i,j,k+1,n);
                         ozp = 0.0;
                     }
@@ -878,8 +893,8 @@ void mlebabeclap_gsrb (Box const& box,
                             rho += -vfrcinv*(-dhx)*feb;
 
                         } else if (phi_on_centroid) {
-                            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,
-                                                                      anrmx,anrmy,anrmz,treat_eb_as_inhomog);
+                            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,vfrc,
+                                                                      anrmx,anrmy,anrmz,treat_eb_as_inhomog,vol_eps);
                             Real feb = dphidn * ba(i,j,k) * beb(i,j,k,n);
                             rho += -vfrcinv*(-dhx)*feb;
                         }
@@ -906,6 +921,9 @@ void mlebabeclap_flux_x (Box const& box, Array4<Real> const& fx,
                          Real dhx, int face_only, int ncomp, Box const& xbox,
                          bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     int lof = xbox.smallEnd(0);
     int hif = xbox.bigEnd(0);
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
@@ -946,8 +964,8 @@ void mlebabeclap_flux_x (Box const& box, Array4<Real> const& fx,
                 } else {
                     Real yloc_on_xface = fcx(i,j,k,0);
                     Real zloc_on_xface = fcx(i,j,k,1);
-                    fxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                     yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                    fxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                     yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                     fx(i,j,k,n) = -dhx*bX(i,j,k,n)*fxm;
                 }
             }
@@ -967,6 +985,9 @@ void mlebabeclap_flux_y (Box const& box, Array4<Real> const& fy,
                          Real dhy, int face_only, int ncomp, Box const& ybox,
                          bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     int lof = ybox.smallEnd(1);
     int hif = ybox.bigEnd(1);
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
@@ -1006,8 +1027,8 @@ void mlebabeclap_flux_y (Box const& box, Array4<Real> const& fy,
                 } else {
                     Real xloc_on_yface = fcy(i,j,k,0);
                     Real zloc_on_yface = fcy(i,j,k,1);
-                    fym = grad_y_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                     xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                    fym = grad_y_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                     xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                     fy(i,j,k,n) = -dhy*bY(i,j,k,n)*fym;
                 }
 
@@ -1028,6 +1049,9 @@ void mlebabeclap_flux_z (Box const& box, Array4<Real> const& fz,
                          Real dhz, int face_only, int ncomp, Box const& zbox,
                          bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     int lof = zbox.smallEnd(2);
     int hif = zbox.bigEnd(2);
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
@@ -1067,8 +1091,8 @@ void mlebabeclap_flux_z (Box const& box, Array4<Real> const& fz,
                 } else {
                     Real xloc_on_zface = fcz(i,j,k,0);
                     Real yloc_on_zface = fcz(i,j,k,1);
-                    fzm = grad_z_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                     xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog);
+                    fzm = grad_z_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                     xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                     fz(i,j,k,n) = -dhz*bZ(i,j,k,n)*fzm;
                 }
             }
@@ -1143,6 +1167,9 @@ void mlebabeclap_grad_x (Box const& box, Array4<Real> const& gx, Array4<Real con
                          Array4<Real const> const& phieb, bool is_eb_dirichlet, bool is_eb_inhomog,
                          Real dxi, int ncomp, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         if (apx(i,j,k) == 0.0) {
@@ -1168,8 +1195,8 @@ void mlebabeclap_grad_x (Box const& box, Array4<Real> const& gx, Array4<Real con
             } else {
                 Real yloc_on_xface = fcx(i,j,k,0);
                 Real zloc_on_xface = fcx(i,j,k,1);
-                Real gxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                      yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                Real gxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                      yloc_on_xface,zloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 gx(i,j,k,n) = dxi*gxm;
             }
         }
@@ -1186,6 +1213,9 @@ void mlebabeclap_grad_y (Box const& box, Array4<Real> const& gy, Array4<Real con
                          Array4<Real const> const& phieb, bool is_eb_dirichlet, bool is_eb_inhomog,
                          Real dyi, int ncomp, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         if (apy(i,j,k) == 0.0) {
@@ -1211,8 +1241,8 @@ void mlebabeclap_grad_y (Box const& box, Array4<Real> const& gy, Array4<Real con
             } else {
                 Real xloc_on_yface = fcy(i,j,k,0);
                 Real zloc_on_yface = fcy(i,j,k,1);
-                Real gym = grad_y_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                      xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                Real gym = grad_y_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                      xloc_on_yface,zloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 gy(i,j,k,n) = dyi*gym;
             }
         }
@@ -1229,6 +1259,9 @@ void mlebabeclap_grad_z (Box const& box, Array4<Real> const& gz, Array4<Real con
                          Array4<Real const> const& phieb, bool is_eb_dirichlet, bool is_eb_inhomog,
                          Real dzi, int ncomp, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         if (apz(i,j,k) == 0.0) {
@@ -1254,8 +1287,8 @@ void mlebabeclap_grad_z (Box const& box, Array4<Real> const& gz, Array4<Real con
             } else {
                 Real xloc_on_zface = fcz(i,j,k,0);
                 Real yloc_on_zface = fcz(i,j,k,1);
-                Real gzm = grad_z_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,
-                                                      xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog);
+                Real gzm = grad_z_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,apz,vfrc,
+                                                      xloc_on_zface,yloc_on_zface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 gz(i,j,k,n) = dzi*gzm;
             }
         }
