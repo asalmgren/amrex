@@ -26,6 +26,9 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                         Real alpha, Real beta, int ncomp,
                         bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     Real dhx = beta*dxinv[0]*dxinv[0];
     Real dhy = beta*dxinv[1]*dxinv[1];
 
@@ -35,13 +38,13 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
     // Decide on who is merging
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
-        if (i_am_large_cell)
+        // if (i_am_large_cell)
         {
             // Re-define my centroid and store old?
             // label me as merged
             // store direction of small cell who merged into me
         }
-    }); \\ end of loop over box
+    }); // end of loop over box
 
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -96,14 +99,14 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
 
                 if(needs_bdry_stencil) {
 
-                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrac,
-                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,
+                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
 
                 } else {
-                  fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                  fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fxm *= bX(i,j,k,n);
             }
@@ -121,13 +124,13 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                        (apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
                 Real yloc_on_xface = fcx(i+1,j,k,0);
                 if(needs_bdry_stencil) {
-                  fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,
+                  fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
                 } else {
-                  fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                  fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fxp *= bX(i+1,j,k,n);
 
@@ -148,14 +151,14 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
 
                 if(needs_bdry_stencil) {
 
-                  fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,
+                  fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
 
                 } else {
-                  fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                  fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fym *= bY(i,j,k,n);
             }
@@ -173,14 +176,14 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                        (apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
                 Real xloc_on_yface = fcy(i,j+1,k,0);
                 if(needs_bdry_stencil) {
-                  fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,
+                  fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
 
                 } else {
-                  fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                  fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fyp *= bY(i,j+1,k,n);
             }
@@ -230,8 +233,8 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                     feb = dphidn * ba(i,j,k) * beb(i,j,k,n);
                 } else if (phi_on_centroid) {
 
-                    feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,
-                                                             anrmx,anrmy,is_eb_inhomog,
+                    feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
+                                                             anrmx,anrmy,is_eb_inhomog,vol_eps,
                                                              on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                              on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
 
@@ -242,57 +245,35 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
 
             y(i,j,k,n) = alpha*a(i,j,k)*x(i,j,k,n) + (1.0/kappa) *
                 (dhx*(apxm*fxm-apxp*fxp) + dhy*(apym*fym-apyp*fyp) - dhx*feb);
-
-            if((i==3 or i==4) and j==0 and n==0){
-              amrex::Print() << "\n\n Data Dump:  " << i
-                             << "\n alpha " << alpha
-                             << "\n x     " << x(i,j,k,n)
-                             << "\n kappa " << kappa << "\n"
-                             << "\n  dhx  " << dhx
-                             << "\n apxm  " << apxm
-                             << "\n  fxm  " <<  fxm
-                             << "\n apxp  " << apxp
-                             << "\n  fxp  " <<  fxp << "\n"
-                             << "\n  dhy  " << dhy
-                             << "\n apym  " << apym
-                             << "\n  fym  " <<  fym
-                             << "\n apyp  " << apyp
-                             << "\n  fyp  " <<  fyp << "\n"
-                             << "\n  dhx  " <<  dhx
-                             << "\n  feb  " <<  feb << "\n"
-                             << "\n  LAP  " << y(i,j,k,n) << std::endl;
-            }
-
-
         }
-    }); \\ end of loop over box
+    }); // end of loop over box
 
     // Add update from small cell to update of large cell
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
-        if (i_am_large_cell)
+        // if (i_am_large_cell)
         {
-            int ii = small_cell_dir(0);
-            int jj = small_cell_dir(1);
-            y(i,j,k,n) += y(i+ii,j+jj,k,n);
+            // int ii = small_cell_dir(0);
+            // int jj = small_cell_dir(1);
+            // y(i,j,k,n) += y(i+ii,j+jj,k,n);
         }
-    }); \\ end of loop over box
+    }); // end of loop over box
 
     // Call cell-centroid-centered slopes routines (in Src/EB) to define slope 
     // and put values on original centroid
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
-        if (i_am_large_cell)
+        // if (i_am_large_cell)
         {
            // call slopes -- need to modify this routine to not use small cells
            // update small cell
            // calculates new version of my own value but don't add until everyone has done their slope call
         }
-    }); \\ end of loop over box
+    }); // end of loop over box
 
-    \\ Now update all pairs
+    // Now update all pairs
 
-    \\ Reset centroids if necessary
+    // Reset centroids if necessary
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
@@ -310,6 +291,9 @@ void mlebabeclap_ebflux (int i, int j, int k, int n,
                          bool phi_on_centroid, bool is_eb_inhomog,
                          GpuArray<Real,AMREX_SPACEDIM> const& dxinv) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     Real dhx = dxinv[0];
 
     if (!flag(i,j,k).isSingleValued())
@@ -368,8 +352,8 @@ void mlebabeclap_ebflux (int i, int j, int k, int n,
         }
         else if (phi_on_centroid)
         {
-            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,
-                                                      anrmx,anrmy,is_eb_inhomog);
+            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
+                                                      anrmx,anrmy,is_eb_inhomog,vol_eps);
             feb(i,j,k,n) = -beb(i,j,k,n) * dphidn;
         }
     }
@@ -395,6 +379,8 @@ void mlebabeclap_gsrb (Box const& box,
                        bool is_eb_dirichlet, bool beta_on_centroid, bool phi_on_centroid,
                        Box const& vbox, int redblack, int ncomp) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
 
     const auto vlo = amrex::lbound(vbox);
     const auto vhi = amrex::ubound(vbox);
@@ -471,8 +457,8 @@ void mlebabeclap_gsrb (Box const& box,
                     } else if ( phi_on_centroid and
                               (apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
                         Real yloc_on_xface = fcx(i,j,k,0);
-                        fxm = grad_x_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,
-                                                         yloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fxm = grad_x_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                         yloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
                         fxm *= bX(i,j,k,n);
                         oxm = 0.0;
                     }
@@ -500,8 +486,8 @@ void mlebabeclap_gsrb (Box const& box,
                     } else if ( phi_on_centroid and
                                (apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) ) {
                         Real yloc_on_xface = fcx(i+1,j,k,0);
-                        fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,
-                                                         yloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                         yloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
                         fxp *= bX(i+1,j,k,n);
                         oxp = 0.0;
                     }
@@ -529,8 +515,8 @@ void mlebabeclap_gsrb (Box const& box,
                     } else if ( phi_on_centroid and
                                (apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
                         Real xloc_on_yface = fcy(i,j,k,0);
-                        fym = grad_y_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,
-                                                         xloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fym = grad_y_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                         xloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
                         fym *= bY(i,j,k,n);
                         oym = 0.0;
                     }
@@ -558,8 +544,8 @@ void mlebabeclap_gsrb (Box const& box,
                      } else if ( phi_on_centroid and
                                 (apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0) ) {
                         Real xloc_on_yface = fcy(i,j+1,k,0);
-                        fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,phi,phieb,flag,ccent,bcent,apx,apy,
-                                                         xloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog);
+                        fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                         xloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
                         oyp = 0.0;
                     }
 
@@ -624,8 +610,8 @@ void mlebabeclap_gsrb (Box const& box,
                             gamma += vfrcinv*(-dhx)*feb_gamma;
 
                         } else if (phi_on_centroid) {
-                            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,
-                                                                      anrmx,anrmy,treat_eb_as_inhomog);
+                            Real dphidn = grad_eb_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,vfrc,
+                                                                      anrmx,anrmy,treat_eb_as_inhomog,vol_eps);
                             Real feb = dphidn * ba(i,j,k) * beb(i,j,k,n);
                             rho += -vfrcinv*(-dhx)*feb;
                         }
@@ -663,6 +649,9 @@ void mlebabeclap_flux_x (Box const& box, Array4<Real> const& fx,
                          Real dhx, int face_only, int ncomp, Box const& xbox,
                          bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     int lof = xbox.smallEnd(0);
     int hif = xbox.bigEnd(0);
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
@@ -692,8 +681,8 @@ void mlebabeclap_flux_x (Box const& box, Array4<Real> const& fx,
                     fx(i,j,k,n) = -dhx*bX(i,j,k,n)*(sol(i,j,k,n)-sol(i-1,j,k,n));
                 } else {
                     Real yloc_on_xface = fcx(i,j,k,0);
-                    fxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,
-                                                     yloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                    fxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                     yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                     fx(i,j,k,n) = -dhx*bX(i,j,k,n)*fxm;
                 }
             }
@@ -714,6 +703,9 @@ void mlebabeclap_flux_y (Box const& box, Array4<Real> const& fy,
                          Real dhy, int face_only, int ncomp, Box const& ybox,
                          bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     int lof = ybox.smallEnd(1);
     int hif = ybox.bigEnd(1);
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
@@ -743,8 +735,8 @@ void mlebabeclap_flux_y (Box const& box, Array4<Real> const& fy,
                     fy(i,j,k,n) = -dhy*bY(i,j,k,n)*(sol(i,j,k,n)-sol(i,j-1,k,n));
                 } else {
                     Real xloc_on_yface = fcy(i,j,k,0);
-                    fym = grad_y_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,
-                                                     xloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                    fym = grad_y_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                     xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                     fy(i,j,k,n) = -dhy*bY(i,j,k,n)*fym;
                 }
             }
@@ -801,6 +793,9 @@ void mlebabeclap_grad_x (Box const& box, Array4<Real> const& gx, Array4<Real con
                          bool is_eb_dirichlet, bool is_eb_inhomog,
                          Real dxi, int ncomp, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         if (apx(i,j,k) == 0.0) {
@@ -821,8 +816,8 @@ void mlebabeclap_grad_x (Box const& box, Array4<Real> const& gx, Array4<Real con
                 gx(i,j,k,n) = dxi*(sol(i,j,k,n)-sol(i-1,j,k,n));
             } else {
                 Real yloc_on_xface = fcx(i,j,k);
-                Real gxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,
-                                                      yloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                Real gxm = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                      yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 gx(i,j,k,n) = dxi*gxm;
             }
         }
@@ -839,7 +834,9 @@ void mlebabeclap_grad_y (Box const& box, Array4<Real> const& gy, Array4<Real con
                          bool is_eb_dirichlet, bool is_eb_inhomog,
                          Real dyi, int ncomp, bool phi_on_centroid) noexcept
 {
-#if 0
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         if (apy(i,j,k) == 0.0) {
@@ -859,13 +856,12 @@ void mlebabeclap_grad_y (Box const& box, Array4<Real> const& gy, Array4<Real con
                 gy(i,j,k,n) = dyi*(sol(i,j,k,n)-sol(i,j-1,k,n));
             } else {
                 Real xloc_on_yface = fcy(i,j,k);
-                Real gym = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,
-                                                      xloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                Real gym = grad_x_of_phi_on_centroids(i,j,k,n,sol,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                      xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 gy(i,j,k,n) = dyi*gym;
             }
         }
     });
-#endif
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
@@ -1027,6 +1023,9 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
                       Real alpha, Real beta, int ncomp,
                       bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
     amrex::Print() << "MLEBABecLap_2D_K  --> mlebabeclap_cc0\n";
 
     Real dhx = beta*dxinv[0]*dxinv[0];
@@ -1111,13 +1110,13 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
 
                 if(needs_bdry_stencil) {
 
-                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,
+                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
                 } else {
-                  fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                  fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fxm *= bX(i,j,k,n);
             }
@@ -1136,13 +1135,13 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
                        (apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
                 Real yloc_on_xface = fcx(i+1,j,k,0);
                 if(needs_bdry_stencil) {
-                  fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,
+                  fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
                 } else {
-                  fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
+                  fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fxp *= bX(i+1,j,k,n);
             }
@@ -1162,13 +1161,13 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
                        (apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0 or vfrc(i,j+1,k) != 1.0) ) {
                 Real xloc_on_yface = fcy(i,j,k,0);
                 if(needs_bdry_stencil) {
-                  fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,
+                  fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
                 } else {
-                  fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                  fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fym *= bY(i,j,k,n);
             }
@@ -1187,14 +1186,14 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
                        (apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
                 Real xloc_on_yface = fcy(i,j+1,k,0);
                 if(needs_bdry_stencil) {
-                  fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,
+                  fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
 
                 } else {
-                  fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,
-                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
+                  fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
                 }
                 fyp *= bY(i,j+1,k,n);
             }
@@ -1247,8 +1246,8 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
 
                 } else if (phi_on_centroid) {
 
-                    feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,
-                                                             anrmx,anrmy,is_eb_inhomog,
+                    feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
+                                                             anrmx,anrmy,is_eb_inhomog, vol_eps,
                                                              on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                              on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
 
