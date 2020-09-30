@@ -9,7 +9,7 @@ namespace amrex {
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void decomp_chol_np6(Array2D<Real,0,5,0,5>& aa)
 {
-    int neq = 6;
+    constexpr int neq = 6;
 
     Real p[neq];
     Real sum1;
@@ -62,7 +62,7 @@ void decomp_chol_np6(Array2D<Real,0,5,0,5>& aa)
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void  cholsol_np6(Array2D<Real,0,11,0,5>& Amatrix, Array1D<Real,0,5>& b)
 {
-    int neq = 6;
+    constexpr int neq = 6;
 
     Array2D<Real,0,5,0,5> AtA;
 
@@ -260,12 +260,15 @@ Real grad_x_of_phi_on_centroids(int i,int j,int k,int n,
                 Real x_off = static_cast<Real>(ii-i) + 0.5;
                 Real y_off = static_cast<Real>(jj-j);
 
-                Amatrix(a_ind,0) = 1.0;
-                Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0);
-                Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - yloc_on_xface;
-                Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
-                Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
-                Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
+                if (vfrac(ii,jj,k) > vol_eps)
+                {
+                    Amatrix(a_ind,0) = 1.0;
+                    Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0);
+                    Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - yloc_on_xface;
+                    Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
+                    Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
+                    Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
+                }
 
                 if (!flag(ii,jj,k).isRegular())
                 {

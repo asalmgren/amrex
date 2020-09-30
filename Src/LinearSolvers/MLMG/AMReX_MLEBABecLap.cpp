@@ -2067,39 +2067,20 @@ MLEBABecLap::CalcCoeff0 (int amrlev, int mglev, MultiFab& out)
             bool  phi_on_centroid = (m_phi_loc  == Location::CellCentroid);
             bool beta_on_centroid = (m_beta_loc == Location::FaceCentroid);
 
-#ifdef AMREX_USE_DPCPP
-            // xxxxx DPCPP todo: kernel size
-            Vector<Array4<Real const> > htmp = {ccfab,bafab,bcfab,bebfab,phiebfab,
-                                                AMREX_D_DECL(apxfab,apyfab,apzfab),
-                                                AMREX_D_DECL(fcxfab,fcyfab,fczfab)};
-            Gpu::AsyncArray<Array4<Real const> > dtmp(htmp.data(), 5+2*AMREX_SPACEDIM);
-            auto dp = dtmp.data();
-#endif
             AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( bx, tbx,
             {
                  mlebabeclap_cc0(tbx, yfab, xfab, afab, AMREX_D_DECL(bxfab,byfab,bzfab),
-                                  ccmfab, flagfab, vfracfab,
-#ifdef AMREX_USE_DPCPP
-#if (AMREX_SPACEDIM == 2)
-                                  dp[5], dp[6],         // apx, apy
-                                  dp[7], dp[8],         // fcx, fcy
-#else if (AMREX_SPACEDIM == 3)
-                                  dp[5], dp[6], dp[ 7], // apx, apy, apz
-                                  dp[8], dp[9], dp[10], // fcx, fcy, fcz
-#endif
-                                  dp[0], dp[1], dp[2], dp[3], dp[4], // ccfab, bafab, bcfab, bebfab, phiebfab,
-#else // not USE_DPCPP
-                                  AMREX_D_DECL(apxfab,apyfab,apzfab),
-                                  AMREX_D_DECL(fcxfab,fcyfab,fczfab),
-                                  ccfab, bafab, bcfab, bebfab, phiebfab,
-#endif
-                                  AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
-                                  AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
-                                  AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
-                                  AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
-                                  AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
-                                  is_eb_dirichlet, is_eb_inhomog, dxinvarr,
-                                  ascalar, bscalar, ncomp, beta_on_centroid, phi_on_centroid);
+                                 ccmfab, flagfab, vfracfab,
+                                 AMREX_D_DECL(apxfab,apyfab,apzfab),
+                                 AMREX_D_DECL(fcxfab,fcyfab,fczfab),
+                                 ccfab, bafab, bcfab, bebfab, phiebfab,
+                                 AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
+                                 AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
+                                 AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
+                                 AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
+                                 AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
+                                 is_eb_dirichlet, is_eb_inhomog, dxinvarr,
+                                 ascalar, bscalar, ncomp, beta_on_centroid, phi_on_centroid);
             });
         }
     }

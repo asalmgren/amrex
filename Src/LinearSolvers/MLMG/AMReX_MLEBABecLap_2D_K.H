@@ -32,6 +32,17 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
     bool beta_on_center = !(beta_on_centroid);
     bool  phi_on_center = !( phi_on_centroid);
 
+    // Decide on who is merging
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (i_am_large_cell)
+        {
+            // Re-define my centroid and store old?
+            // label me as merged
+            // store direction of small cell who merged into me
+        }
+    }); \\ end of loop over box
+
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         if (flag(i,j,k).isCovered())
@@ -85,15 +96,10 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
 
                 if(needs_bdry_stencil) {
 
-                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
+                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrac,
                                                           yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
-
-                  if(i==3 and j==0 and n==0)
-                    amrex::Print() << "\n\n Calculated fxm for (3,0):"
-                                   << "\n i/j/k/n " << i << "  " << j << "  " << k << "  " << n
-                                   << "\n     fxm " << fxm << std::endl;
 
                 } else {
                   fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
@@ -119,11 +125,6 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                                                           yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
-                  if(i==3 and j==0 and n==0)
-                    amrex::Print() << "\n\n Calculated fxp for (3,0):"
-                                   << "\n i/j/k/n " << i << "  " << j << "  " << k << "  " << n
-                                   << "\n     fxp " << fxp << std::endl;
-
                 } else {
                   fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
                                                    yloc_on_xface,is_eb_dirichlet,is_eb_inhomog);
@@ -152,12 +153,6 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
 
-                  if(i==3 and j==0 and n==0)
-                    amrex::Print() << "\n\n Calculated fym for (3,0):"
-                                   << "\n i/j/k/n " << i << "  " << j << "  " << k << "  " << n
-                                   << "\n     fym " << fym << std::endl;
-
-
                 } else {
                   fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,
                                                    xloc_on_yface,is_eb_dirichlet,is_eb_inhomog);
@@ -182,11 +177,6 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                                                           xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,
                                                           on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                           on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
-
-                  if(i==3 and j==0 and n==0)
-                    amrex::Print() << "\n\n Calculated fyp for (3,0):"
-                                   << "\n i/j/k/n " << i << "  " << j << "  " << k << "  " << n
-                                   << "\n     fyp " << fyp << std::endl;
 
                 } else {
                   fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,
@@ -275,7 +265,34 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
 
 
         }
-    });
+    }); \\ end of loop over box
+
+    // Add update from small cell to update of large cell
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (i_am_large_cell)
+        {
+            int ii = small_cell_dir(0);
+            int jj = small_cell_dir(1);
+            y(i,j,k,n) += y(i+ii,j+jj,k,n);
+        }
+    }); \\ end of loop over box
+
+    // Call cell-centroid-centered slopes routines (in Src/EB) to define slope 
+    // and put values on original centroid
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (i_am_large_cell)
+        {
+           // call slopes -- need to modify this routine to not use small cells
+           // update small cell
+           // calculates new version of my own value but don't add until everyone has done their slope call
+        }
+    }); \\ end of loop over box
+
+    \\ Now update all pairs
+
+    \\ Reset centroids if necessary
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
@@ -1267,13 +1284,7 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
                  amrex::Print() << " " << std::endl;
                  //amrex::Abort("cc0 less than zero");
             }
-
         }
-
-
-
-
-
     });
 }
 
