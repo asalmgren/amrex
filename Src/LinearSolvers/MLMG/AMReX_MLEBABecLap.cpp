@@ -769,6 +769,8 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
 
     const Box& domain_box = m_geom[amrlev][mglev].Domain();
 
+    FArrayBox ccent_merged;
+
     AMREX_D_TERM(
         const int domlo_x = domain_box.smallEnd(0);
         const int domhi_x = domain_box.bigEnd(0);,
@@ -792,6 +794,7 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
     for (MFIter mfi(out, mfi_info); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
+        const Box& gbx(amrex::grow(bx,1));
         Array4<Real const> const& xfab = in.const_array(mfi);
         Array4<Real> const& yfab = out.array(mfi);
         Array4<Real const> const& afab = acoef.const_array(mfi);
@@ -814,6 +817,11 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
                                 dxinvarr, ascalar, bscalar, ncomp);
             });
         } else {
+            bool beta_on_centroid = (m_beta_loc == Location::FaceCentroid);
+            bool  phi_on_centroid = (m_phi_loc  == Location::CellCentroid);
+
+            bool treat_phi_as_on_centroid = ( phi_on_centroid and (mglev == 0) );
+
             Array4<int const>        const&   ccmfab = ccmask.const_array(mfi);
             Array4<EBCellFlag const> const&  flagfab = flags->const_array(mfi);
             Array4<Real       const> const& vfracfab = vfrac->const_array(mfi);
@@ -825,11 +833,20 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
                          Array4<Real const> const& fczfab = fcent[2]->const_array(mfi););
             Array4<Real const> const& bafab = barea->const_array(mfi);
             Array4<Real const> const& bcfab = bcent->const_array(mfi);
+
             Array4<Real const> const& ccfab = ccent->const_array(mfi);
+
+            // DO We NEED ELIXIR HERE?
+            ccent_merged.resize(gbx,AMREX_SPACEDIM);
+            Array4<Real> cc_merged_fab = ccent_merged.array();
+
             Array4<Real const> const& bebfab = (is_eb_dirichlet)
                 ? m_eb_b_coeffs[amrlev][mglev]->const_array(mfi) : foo;
             Array4<Real const> const& phiebfab = (is_eb_dirichlet && is_eb_inhomog)
                 ? m_eb_phi[amrlev]->const_array(mfi) : foo;
+
+            Array4<Real const> const& cc0fab = (treat_phi_as_on_centroid)
+                ? m_coeff0[amrlev][mglev].const_array(mfi) : foo;
 
             AMREX_D_TERM(
                 const Orientation olo_x(0,Orientation::low );
@@ -847,14 +864,9 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
                 const auto& bvlo_z = (bndry != nullptr) ? bndry->bndryValues(olo_z).array(mfi) : foo;
                 const auto& bvhi_z = (bndry != nullptr) ? bndry->bndryValues(ohi_z).array(mfi) : foo;);
 
-            bool beta_on_centroid = (m_beta_loc == Location::FaceCentroid);
-            bool  phi_on_centroid = (m_phi_loc  == Location::CellCentroid);
-
-            bool treat_phi_as_on_centroid = ( phi_on_centroid and (mglev == 0) );
-
 #ifdef AMREX_USE_DPCPP
             // xxxxx DPCPP todo: kernel size
-            Vector<Array4<Real const> > htmp = {ccfab,bafab,bcfab,bebfab,phiebfab,
+            Vector<Array4<Real const> > htmp = {ccfab,bafab,bcfab,bebfab,phiebfab,cc0fab,cc_merged_fab,
                                                 AMREX_D_DECL(apxfab,apyfab,apzfab),
                                                 AMREX_D_DECL(fcxfab,fcyfab,fczfab)};
             Gpu::AsyncArray<Array4<Real const> > dtmp(htmp.data(), 5+2*AMREX_SPACEDIM);
@@ -879,18 +891,35 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
                 AMREX_DPCPP_3D_ONLY(auto fcyfab = dp[8]);
                 AMREX_DPCPP_3D_ONLY(auto fczfab = dp[9]);
 
-                mlebabeclap_adotx(tbx, yfab, xfab, afab, AMREX_D_DECL(bxfab,byfab,bzfab),
-                                  ccmfab, flagfab, vfracfab,
-                                  AMREX_D_DECL(apxfab,apyfab,apzfab),
-                                  AMREX_D_DECL(fcxfab,fcyfab,fczfab),
-                                  ccfab, bafab, bcfab, bebfab, phiebfab,
-                                  AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
-                                  AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
-                                  AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
-                                  AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
-                                  AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
-                                  is_eb_dirichlet, is_eb_inhomog, dxinvarr,
-                                  ascalar, bscalar, ncomp, beta_on_centroid, treat_phi_as_on_centroid);
+                if (treat_phi_as_on_centroid)
+                {
+                    mlebabeclap_adotx_centroid(
+                                      tbx, yfab, xfab, afab, AMREX_D_DECL(bxfab,byfab,bzfab),
+                                      ccmfab, flagfab, vfracfab,
+                                      AMREX_D_DECL(apxfab,apyfab,apzfab),
+                                      AMREX_D_DECL(fcxfab,fcyfab,fczfab),
+                                      ccfab, bafab, bcfab, bebfab, phiebfab,cc0fab,cc_merged_fab,
+                                      AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
+                                      AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
+                                      AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
+                                      AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
+                                      AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
+                                      is_eb_dirichlet, is_eb_inhomog, dxinvarr,
+                                      ascalar, bscalar, ncomp, beta_on_centroid);
+                } else {
+                    mlebabeclap_adotx(tbx, yfab, xfab, afab, AMREX_D_DECL(bxfab,byfab,bzfab),
+                                      ccmfab, flagfab, vfracfab,
+                                      AMREX_D_DECL(apxfab,apyfab,apzfab),
+                                      AMREX_D_DECL(fcxfab,fcyfab,fczfab),
+                                      ccfab, bafab, bcfab, bebfab, phiebfab,
+                                      AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
+                                      AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
+                                      AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
+                                      AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
+                                      AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
+                                      is_eb_dirichlet, is_eb_inhomog, dxinvarr,
+                                      ascalar, bscalar, ncomp, beta_on_centroid);
+                }
             });
         }
     }
