@@ -575,7 +575,6 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                 else if (on_y_face and jj > domhi_y)
                   c_y_off = -0.5;
 
-
                 if (vfrac(ii,jj,k) > vol_eps)
                 {
                     Amatrix(a_ind,0) = 1.0;

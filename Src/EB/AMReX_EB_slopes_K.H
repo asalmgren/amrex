@@ -289,6 +289,96 @@ amrex_calc_slopes_eb (int i, int j, int k, int n,
     return {AMREX_D_DECL(xslope,yslope,zslope)};
 }
 
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+amrex::GpuArray<amrex::Real,AMREX_SPACEDIM>
+amrex_calc_slopes_eb_special (int i, int j, int k, int n,
+                      amrex::Array4<amrex::Real const> const& state,
+                      amrex::Array4<amrex::Real const> const& ccent,
+                      amrex::Array4<amrex::EBCellFlag const> const& flag,
+                      amrex::Array4<amrex::Real const> const& vfrac,
+                      const amrex::Real vol_eps) noexcept
+{
+#if (AMREX_SPACEDIM == 2)
+    constexpr int dim_a = 9;
+#elif (AMREX_SPACEDIM == 3)
+    constexpr int dim_a = 27;
+#endif
+    amrex::Real A[dim_a][AMREX_SPACEDIM];
+
+    int lc=0;
+#if (AMREX_SPACEDIM == 3)
+    for(int kk(-1); kk<=1; kk++)
+#else
+    int kk = 0;
+#endif
+    {
+        for(int jj(-1); jj<=1; jj++){
+          for(int ii(-1); ii<=1; ii++){
+
+            if( flag(i,j,k).isConnected(ii,jj,kk) and
+                not (ii==0 and jj==0 and kk==0)
+               and (vfrac(i+ii,j+jj,k+kk) > vol_eps) )
+            {
+
+            // Not multplying by dx to be consistent with how the
+            // slope is stored. Also not including the global shift
+            // wrt plo or i,j,k. We only need relative distance.
+
+              A[lc][0] = ii + ccent(i+ii,j+jj,k+kk,0) - ccent(i,j,k,0);
+              A[lc][1] = jj + ccent(i+ii,j+jj,k+kk,1) - ccent(i,j,k,1);
+#if (AMREX_SPACEDIM == 3)
+              A[lc][2] = kk + ccent(i+ii,j+jj,k+kk,2) - ccent(i,j,k,2);
+#endif
+
+            } else {
+
+              AMREX_D_TERM(A[lc][0] = 0.0;,
+                           A[lc][1] = 0.0;,
+                           A[lc][2] = 0.0;);
+            }
+            lc++;
+          }
+        }
+    }
+
+    // 
+    // These slopes use the EB stencil without testing whether it is actually needed
+    // 
+    const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,state,flag);
+    AMREX_D_TERM(amrex::Real xslope = slopes[0];,
+                 amrex::Real yslope = slopes[1];,
+                 amrex::Real zslope = slopes[2];);
+
+    // 
+    // Here we over-write -- if possible -- with a stencil not using the EB stencil
+    // 
+
+    // X direction
+    if (flag(i,j,k).isRegular() and flag(i-1,j,k).isRegular() and flag(i+1,j,k).isRegular()) 
+    {
+        int order = 2;
+        xslope = amrex_calc_xslope(i,j,k,n,order,state);
+    }
+
+    // Y direction
+    if (flag(i,j,k).isRegular() and flag(i,j-1,k).isRegular() and flag(i,j+1,k).isRegular()) 
+    {
+        int order = 2;
+        yslope = amrex_calc_yslope(i,j,k,n,order,state);
+    }
+
+#if (AMREX_SPACEDIM == 3)
+    // Z direction
+    if (flag(i,j,k).isRegular() and flag(i,j,k-1).isRegular() and flag(i,j,k+1).isRegular()) 
+    {
+        int order = 2;
+        zslope = amrex_calc_zslope(i,j,k,n,order,state);
+    }
+#endif
+    
+    return {AMREX_D_DECL(xslope,yslope,zslope)};
+}
+
 // amrex_calc_slopes_extdir_eb calculates the slope in each coordinate direction using a 
 // 1) standard limited slope if all three cells in the stencil are regular cells
 //    (this stencil sees the extdir/hoextrap boundary condition if there is one)
