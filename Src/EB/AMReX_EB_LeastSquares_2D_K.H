@@ -1032,5 +1032,86 @@ Real grad_eb_of_phi_on_centroids_extdir(int i,int j,int k,int n,
     return dphidn;
 }
 
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+Real interp_to_new_centroid(int i,int j,int k,int n,
+                            Array4<Real const> const& phi,
+                            Array4<Real const> const& phieb,
+                            Array4<EBCellFlag const> const& flag,
+                            Array4<Real const> const& ccent_orig,
+                            Array4<Real const> const& ccent_new,
+                            Array4<Real const> const& bcent,
+                            Array4<Real const> const& vfrac,
+                            bool is_eb_inhomog)
+{
+    Array2D<Real,0,17,0,5> Amatrix;
+    Array1D<Real,0, 5    > rhs;
+
+    // Order of column -- first 9 are cell centroids, next 9 are EB centroids
+
+    for (int irow = 0; irow < 18; irow++)
+        for (int icol = 0; icol < 6; icol++)
+            Amatrix(irow,icol) =  0.0;
+
+    //  Column 0-2: [e x y]
+    for (int ii = i-1; ii <= i+1; ii++)
+        for (int jj = j-1; jj <= j+1; jj++)
+        {
+            if (!flag(ii,jj,k).isCovered())
+            {
+                int a_ind  = (jj-(j-1)) + 3*(ii-(i-1));
+
+                Real x_off = static_cast<Real>(ii-i);
+                Real y_off = static_cast<Real>(jj-j);
+
+                if (flag(i,j,k).isConnected((ii-i),(jj-j),0))
+                {
+                    // if (vfrac(ii,jj,k) > vol_eps)
+                    {
+                        Amatrix(a_ind,0) = 1.0;
+                        Amatrix(a_ind,1) = x_off + ccent_orig(ii,jj,k,0) - ccent_new(i,j,k,0);
+                        Amatrix(a_ind,2) = y_off + ccent_orig(ii,jj,k,1) - ccent_new(i,j,k,1);
+                    }
+                }
+
+                if (flag(i,j,k).isConnected((ii-i),(jj-j),0) and !flag(ii,jj,k).isRegular())
+                {
+                    Amatrix(a_ind+9,0) = 1.0;
+                    Amatrix(a_ind+9,1) = x_off + bcent(ii,jj,k,0) - ccent_new(i,j,k,0);
+                    Amatrix(a_ind+9,2) = y_off + bcent(ii,jj,k,1) - ccent_new(i,j,k,1);
+                }
+            }
+        }
+
+    // Columns 3 : [x*x  x*y  y*y]
+
+    for (int irow = 0; irow < 18; irow++)
+    {
+       Amatrix(irow,3) =  Amatrix(irow,1) * Amatrix(irow,1);
+       Amatrix(irow,4) =  Amatrix(irow,1) * Amatrix(irow,2);
+       Amatrix(irow,5) =  Amatrix(irow,2) * Amatrix(irow,2);
+    }
+
+    // Make the RHS = A^T v
+    for (int irow = 0; irow < 6; irow++)
+    {
+        rhs(irow) = 0.;
+
+        for (int ii = i-1; ii <= i+1; ii++)
+            for (int jj = j-1; jj <= j+1; jj++)
+                if (!flag(ii,jj,k).isCovered())
+                {
+                    int a_ind  = (jj-(j-1)) + 3*(ii-(i-1));
+                    rhs(irow) += Amatrix(a_ind,irow) * phi(ii,jj,k,n);
+                    if (flag(ii,jj,k).isSingleValued() and is_eb_inhomog)
+                        rhs(irow) += Amatrix(a_ind+9,irow)*phieb(ii,jj,k,n);
+                }
+    }
+
+    cholsol_for_eb(Amatrix, rhs);
+
+    return rhs(0);
 }
+
+}
+
 #endif

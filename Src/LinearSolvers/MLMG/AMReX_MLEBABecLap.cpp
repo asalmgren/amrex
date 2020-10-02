@@ -771,6 +771,7 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
 
     FArrayBox ccent_merged;
     FArrayBox slopes_merged;
+    FArrayBox soln_merged;
 
     AMREX_D_TERM(
         const int domlo_x = domain_box.smallEnd(0);
@@ -837,19 +838,19 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
 
             Array4<Real const> const& ccfab = ccent->const_array(mfi);
 
-            // DO We NEED ELIXIR HERE?
-            ccent_merged.resize(gbx,AMREX_SPACEDIM);
+            // DO We NEED ELIXIRs HERE?
+             ccent_merged.resize(gbx,AMREX_SPACEDIM);
             slopes_merged.resize(gbx,AMREX_SPACEDIM);
-            Array4<Real> cc_merged_fab = ccent_merged.array();
+              soln_merged.resize(gbx,AMREX_SPACEDIM);
+
+            Array4<Real>  ccent_merged_fab =  ccent_merged.array();
             Array4<Real> slopes_merged_fab = slopes_merged.array();
+            Array4<Real>   soln_merged_fab =   soln_merged.array();
 
             Array4<Real const> const& bebfab = (is_eb_dirichlet)
                 ? m_eb_b_coeffs[amrlev][mglev]->const_array(mfi) : foo;
             Array4<Real const> const& phiebfab = (is_eb_dirichlet && is_eb_inhomog)
                 ? m_eb_phi[amrlev]->const_array(mfi) : foo;
-
-            Array4<Real const> const& cc0fab = (treat_phi_as_on_centroid)
-                ? m_coeff0[amrlev][mglev].const_array(mfi) : foo;
 
             AMREX_D_TERM(
                 const Orientation olo_x(0,Orientation::low );
@@ -867,34 +868,8 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
                 const auto& bvlo_z = (bndry != nullptr) ? bndry->bndryValues(olo_z).array(mfi) : foo;
                 const auto& bvhi_z = (bndry != nullptr) ? bndry->bndryValues(ohi_z).array(mfi) : foo;);
 
-#ifdef AMREX_USE_DPCPP
-            // xxxxx DPCPP todo: kernel size
-            Vector<Array4<Real const> > htmp = {ccfab,bafab,bcfab,bebfab,phiebfab,cc0fab,
-                                                cc_merged_fab,slopes_merged_fab,
-                                                AMREX_D_DECL(apxfab,apyfab,apzfab),
-                                                AMREX_D_DECL(fcxfab,fcyfab,fczfab)};
-            Gpu::AsyncArray<Array4<Real const> > dtmp(htmp.data(), 5+2*AMREX_SPACEDIM);
-            auto dp = dtmp.data();
-#endif
             AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( bx, tbx,
             {
-                AMREX_DPCPP_ONLY(auto bafab    = dp[0]);
-                AMREX_DPCPP_ONLY(auto bcfab    = dp[1]);
-                AMREX_DPCPP_ONLY(auto bebfab   = dp[2]);
-                AMREX_DPCPP_ONLY(auto phiebfab = dp[3]);
-
-                AMREX_DPCPP_2D_ONLY(auto apxfab = dp[4]);
-                AMREX_DPCPP_2D_ONLY(auto apyfab = dp[5]);
-                AMREX_DPCPP_2D_ONLY(auto fcxfab = dp[6]);
-                AMREX_DPCPP_2D_ONLY(auto fcyfab = dp[7]);
-
-                AMREX_DPCPP_3D_ONLY(auto apxfab = dp[4]);
-                AMREX_DPCPP_3D_ONLY(auto apyfab = dp[5]);
-                AMREX_DPCPP_3D_ONLY(auto apzfab = dp[6]);
-                AMREX_DPCPP_3D_ONLY(auto fcxfab = dp[7]);
-                AMREX_DPCPP_3D_ONLY(auto fcyfab = dp[8]);
-                AMREX_DPCPP_3D_ONLY(auto fczfab = dp[9]);
-
                 if (treat_phi_as_on_centroid)
                 {
                     mlebabeclap_adotx_centroid(
@@ -902,8 +877,10 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
                                       flagfab, vfracfab,
                                       AMREX_D_DECL(apxfab,apyfab,apzfab),
                                       AMREX_D_DECL(fcxfab,fcyfab,fczfab),
-                                      ccfab, bafab, bcfab, bebfab, phiebfab,cc0fab,
-                                      cc_merged_fab, slopes_merged_fab,
+                                      ccfab, bafab, bcfab, bebfab, phiebfab,
+                                      soln_merged_fab, 
+                                      ccent_merged_fab, 
+                                      slopes_merged_fab,
                                       AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
                                       AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
                                       AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
@@ -916,10 +893,7 @@ MLEBABecLap::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& in) c
                                       ccmfab, flagfab, vfracfab,
                                       AMREX_D_DECL(apxfab,apyfab,apzfab),
                                       AMREX_D_DECL(fcxfab,fcyfab,fczfab),
-                                      ccfab, bafab, bcfab, bebfab, phiebfab,
-                                      AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
-                                      AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
-                                      AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
+                                      bafab, bcfab, bebfab, phiebfab,
                                       is_eb_dirichlet, is_eb_inhomog, dxinvarr,
                                       ascalar, bscalar, ncomp, beta_on_centroid);
                 }

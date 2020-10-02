@@ -8,8 +8,10 @@ namespace amrex {
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void mlebabeclap_adotx_centroid(
-                        Box const& box, Array4<Real> const& y,
-                        Array4<Real const> const& x, Array4<Real const> const& a,
+                        Box const& box, 
+                        Array4<Real> const& y,
+                        Array4<Real const> const& x_orig, 
+                        Array4<Real const> const& a,
                         Array4<Real const> const& bX, Array4<Real const> const& bY,
                         Array4<EBCellFlag const> const& flag,
                         Array4<Real const> const& vfrc,
@@ -18,7 +20,8 @@ void mlebabeclap_adotx_centroid(
                         Array4<Real const> const& ccent_orig, Array4<Real const> const& ba,
                         Array4<Real const> const& bcent, Array4<Real const> const& beb,
                         Array4<Real const> const& phieb,
-                        Array4<Real const> const& cc0, Array4<Real> const& ccent,
+                        Array4<Real> const& x,
+                        Array4<Real> const& ccent,
                         Array4<Real      > const& slopes,
                         Array4<Real const> const& bcval_xlo, Array4<Real const> const& bcval_ylo,
                         Array4<Real const> const& bcval_xhi, Array4<Real const> const& bcval_yhi,
@@ -41,18 +44,17 @@ void mlebabeclap_adotx_centroid(
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged (thus not used in any stencils)
     constexpr Real vol_eps = 2.e-4;
 
-    // We could define cc0 < 0 as the trigger instead -- we should test this
-
-    // First copy ccent_orig into ccent
+    // First copy x_orig into x and ccent_orig into ccent
     Box gbx(amrex::grow(box,1));
-    amrex::Loop(gbx, [=] (int i, int j, int k) noexcept
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         ccent(i,j,k,0) = ccent_orig(i,j,k,0);
         ccent(i,j,k,1) = ccent_orig(i,j,k,1);
+            x(i,j,k,n) =     x_orig(i,j,k,n);
     }); // end of loop over box
 
     // Decide on who is merging
-    amrex::Loop(gbx, [=] (int i, int j, int k) noexcept
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
         if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps) 
         {
@@ -63,6 +65,7 @@ void mlebabeclap_adotx_centroid(
             Real apxp = apx(i+1,j  ,k);
             Real apym = apy(i  ,j  ,k);
             Real apyp = apy(i  ,j+1,k);
+
             if (apxm > apxp and apxm > apym and apxm > apyp) {
                 ii = i-1;
                 jj = j  ;
@@ -92,6 +95,9 @@ void mlebabeclap_adotx_centroid(
                 ccent(ii,jj,k,1) = (vfrc(i,j,k) * (-1.+ccent_orig(i,j,k,1)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
                                    (vfrc(i,j,k) + vfrc(ii,jj,k));
             }
+            // x(ii,jj,k,n) = (vfrc(i,j,k) * x_orig(i,j,k,n) + vfrc(ii,jj,k) * x_orig(ii,jj,k,n)) /
+                              (vfrc(i,j,k) + vfrc(ii,jj,k));
+ 
 
             amrex::Print() << "MERGING SMALL CELL " << IntVect(i,j) << 
                              " INTO LARGE CELL "    << IntVect(ii,jj) << std::endl;
@@ -99,8 +105,9 @@ void mlebabeclap_adotx_centroid(
                                        ccent_orig(ii,jj,k,0) << " " << ccent_orig(ii,jj,k,1) <<
                              " TO " << ccent(ii,jj,k,0) << " " << ccent(ii,jj,k,1) << std::endl;
 
-            // TODO: label large and small as merged
-            // TODO: store direction of small cell who merged into me
+            x(ii,jj,k,n) = interp_to_new_centroid(ii,jj,k,n,x_orig,phieb,flag,ccent_orig,ccent,bcent,vfrc,is_eb_inhomog);
+            amrex::Print() << "VALUE OF LARGE CELL MOVE FROM " << x_orig(ii,jj,k,n) << " TO " << x(ii,jj,k,n) << std::endl;
+
         }
     }); // end of loop over box
 
@@ -123,8 +130,7 @@ void mlebabeclap_adotx_centroid(
                        - bX(i  ,j,k,n)*(x(i  ,j,k,n) - x(i-1,j,k,n)))
                 - dhy * (bY(i,j+1,k,n)*(x(i,j+1,k,n) - x(i,j  ,k,n))
                        - bY(i,j  ,k,n)*(x(i,j  ,k,n) - x(i,j-1,k,n)));
-
-
+           if (i == 16 and j == 4) amrex::Print() << "MAKING REGULAR Y(16,4) " << y(16,4,0,0) << std::endl;
         }
         else
         {
@@ -235,8 +241,11 @@ void mlebabeclap_adotx_centroid(
             // y(i,j,k,n) = alpha*a(i,j,k)*x(i,j,k,n) + 
             y(i,j,k,n) = 
                 (1.0/kappa) * (dhx*(apxm*fxm-apxp*fxp) + dhy*(apym*fym-apyp*fyp) - dhx*feb);
+           if (i == 16 and j == 4) amrex::Print() << "MAKING IRREGULAR Y(16,4) " << y(16,4,0,0) << std::endl;
         }
     }); // end of loop over box
+
+    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     // Add update from small cell to update of large cell
     amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
@@ -273,6 +282,8 @@ void mlebabeclap_adotx_centroid(
             amrex::Print() << "NEW UPDATE TO LARGE CELL IS NOW " << y(ii,jj,k,n) << std::endl;
         }
     }); // end of loop over box
+
+    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     // Call cell-centroid-centered slopes routines (in Src/EB) to define slope 
     // and put values on original centroid
@@ -316,6 +327,8 @@ void mlebabeclap_adotx_centroid(
             slopes(ii,jj,k,1) = slopes_at_ii_jj[1];
         }
     }); // end of loop over box
+
+    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -368,6 +381,8 @@ void mlebabeclap_adotx_centroid(
         }
     }); // end of loop over box
 
+    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
+
     // We didn't add the a*alpha*x term above so let's not forget to add it here
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -376,6 +391,8 @@ void mlebabeclap_adotx_centroid(
             y(i,j,k,n) += alpha*a(i,j,k)*x(i,j,k,n);
         }
     }); // end of loop over box
+
+    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     // We don't need to reset the centroids because "ccent" here was just a tempoeary
 }
@@ -388,12 +405,9 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                         Array4<Real const> const& vfrc,
                         Array4<Real const> const& apx, Array4<Real const> const& apy,
                         Array4<Real const> const& fcx, Array4<Real const> const& fcy,
-                        Array4<Real const> const& ccent, Array4<Real const> const& ba,
+                        Array4<Real const> const& ba,
                         Array4<Real const> const& bcent, Array4<Real const> const& beb,
                         Array4<Real const> const& phieb,
-                        const int& domlo_x,    const int& domlo_y,
-                        const int& domhi_x,    const int& domhi_y,
-                        const bool& on_x_face, const bool& on_y_face,
                         bool is_eb_dirichlet, bool is_eb_inhomog,
                         GpuArray<Real,AMREX_SPACEDIM> const& dxinv,
                         Real alpha, Real beta, int ncomp,
@@ -432,10 +446,6 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
             Real apxp = apx(i+1,j,k);
             Real apym = apy(i,j,k);
             Real apyp = apy(i,j+1,k);
-
-            // First get EB-aware slope that doesn't know about extdir
-            bool needs_bdry_stencil = (i <= domlo_x) or (i >= domhi_x) or
-                                      (j <= domlo_y) or (j >= domhi_y);
 
             Real fxm = bX(i,j,k,n) * (x(i,j,k,n)-x(i-1,j,k,n));
             if (apxm != 0.0 and apxm != 1.0) {
