@@ -30,29 +30,8 @@ AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 amrex::GpuArray<amrex::Real,AMREX_SPACEDIM>
 amrex_calc_slopes_eb_given_A (int i, int j, int k, int n,
                               amrex::Real A[9][AMREX_SPACEDIM],
-                              amrex::Array4<amrex::Real const> const& state,
-                              amrex::Array4<amrex::EBCellFlag const> const& flag) noexcept
+                              amrex::Real du[9]) noexcept
 {
-    amrex::Real du[9];
-
-    int lc=0;
-    {
-        for(int jj(-1); jj<=1; jj++){
-          for(int ii(-1); ii<=1; ii++){
-
-            if( flag(i,j,0).isConnected(ii,jj,0) and
-                not (ii==0 and jj==0)) {
-
-              du[lc] = state(i+ii,j+jj,0,n) - state(i,j,0,n);
-
-            } else {
-
-              du[lc] = 0.0;
-            }
-            lc++;
-          }
-        }
-    }
 
     amrex::Real AtA[AMREX_SPACEDIM][AMREX_SPACEDIM];
     amrex::Real Atb[AMREX_SPACEDIM];
@@ -103,30 +82,8 @@ AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 amrex::GpuArray<amrex::Real,AMREX_SPACEDIM>
 amrex_calc_slopes_eb_given_A (int i, int j, int k, int n,
                               amrex::Real A[27][AMREX_SPACEDIM],
-                              amrex::Array4<amrex::Real const> const& state,
-                              amrex::Array4<amrex::EBCellFlag const> const& flag) noexcept
+                              amrex::Real du[27]) noexcept
 {
-    amrex::Real du[27];
-
-    int lc=0;
-    for(int kk(-1); kk<=1; kk++)
-    {
-        for(int jj(-1); jj<=1; jj++){
-          for(int ii(-1); ii<=1; ii++){
-
-            if( flag(i,j,k).isConnected(ii,jj,kk) and
-                not (ii==0 and jj==0 and kk==0)) {
-
-              du[lc] = state(i+ii,j+jj,k+kk,n) - state(i,j,k,n);
-
-            } else {
-
-              du[lc] = 0.0;
-            }
-            lc++;
-          }
-        }
-    }
 
     amrex::Real AtA[AMREX_SPACEDIM][AMREX_SPACEDIM];
     amrex::Real Atb[AMREX_SPACEDIM];
@@ -216,6 +173,7 @@ amrex_calc_slopes_eb (int i, int j, int k, int n,
     constexpr int dim_a = 27;
 #endif
     amrex::Real A[dim_a][AMREX_SPACEDIM];
+    amrex::Real du[dim_a];
 
     int lc=0;
 #if (AMREX_SPACEDIM == 3)
@@ -239,12 +197,15 @@ amrex_calc_slopes_eb (int i, int j, int k, int n,
 #if (AMREX_SPACEDIM == 3)
               A[lc][2] = kk + ccent(i+ii,j+jj,k+kk,2) - ccent(i,j,k,2);
 #endif
+              du[lc] = state(i+ii,j+jj,k+kk,n) - state(i,j,k,n);
 
             } else {
 
               AMREX_D_TERM(A[lc][0] = 0.0;,
                            A[lc][1] = 0.0;,
                            A[lc][2] = 0.0;);
+
+              du[lc] = 0.0;
             }
             lc++;
           }
@@ -254,7 +215,7 @@ amrex_calc_slopes_eb (int i, int j, int k, int n,
     // 
     // These slopes use the EB stencil without testing whether it is actually needed
     // 
-    const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,state,flag);
+    const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,du);
     AMREX_D_TERM(amrex::Real xslope = slopes[0];,
                  amrex::Real yslope = slopes[1];,
                  amrex::Real zslope = slopes[2];);
@@ -296,7 +257,9 @@ amrex_calc_slopes_eb_special (int i, int j, int k, int n,
                       amrex::Array4<amrex::Real const> const& ccent,
                       amrex::Array4<amrex::EBCellFlag const> const& flag,
                       amrex::Array4<amrex::Real const> const& vfrac,
-                      const amrex::Real vol_eps) noexcept
+                      const amrex::Real vol_eps,
+                      AMREX_D_DECL(int domlo_x, int domlo_y, int domlo_z),
+                      AMREX_D_DECL(int domhi_x, int domhi_y, int domhi_z) ) noexcept
 {
 #if (AMREX_SPACEDIM == 2)
     constexpr int dim_a = 9;
@@ -304,6 +267,7 @@ amrex_calc_slopes_eb_special (int i, int j, int k, int n,
     constexpr int dim_a = 27;
 #endif
     amrex::Real A[dim_a][AMREX_SPACEDIM];
+    amrex::Real du[dim_a];
 
     int lc=0;
 #if (AMREX_SPACEDIM == 3)
@@ -317,7 +281,13 @@ amrex_calc_slopes_eb_special (int i, int j, int k, int n,
 
             if( flag(i,j,k).isConnected(ii,jj,kk) and
                 not (ii==0 and jj==0 and kk==0)
-               and (vfrac(i+ii,j+jj,k+kk) > vol_eps) )
+               and (vfrac(i+ii,j+jj,k+kk) > vol_eps)
+               and (domlo_x <= i+ii and i+ii <= domhi_x)
+               and (domlo_y <= j+jj and j+jj <= domhi_y)
+#if (AMREX_SPACEDIM == 3)
+               and (domlo_z <= k+kk and k+kk <= domhi_z)
+#endif
+                )
             {
 
             // Not multplying by dx to be consistent with how the
@@ -329,12 +299,15 @@ amrex_calc_slopes_eb_special (int i, int j, int k, int n,
 #if (AMREX_SPACEDIM == 3)
               A[lc][2] = kk + ccent(i+ii,j+jj,k+kk,2) - ccent(i,j,k,2);
 #endif
+              du[lc] = state(i+ii,j+jj,k+kk,n) - state(i,j,k,n);
 
             } else {
 
               AMREX_D_TERM(A[lc][0] = 0.0;,
                            A[lc][1] = 0.0;,
                            A[lc][2] = 0.0;);
+
+              du[lc] = 0.0;
             }
             lc++;
           }
@@ -344,7 +317,7 @@ amrex_calc_slopes_eb_special (int i, int j, int k, int n,
     // 
     // These slopes use the EB stencil without testing whether it is actually needed
     // 
-    const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,state,flag);
+    const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,du);
     AMREX_D_TERM(amrex::Real xslope = slopes[0];,
                  amrex::Real yslope = slopes[1];,
                  amrex::Real zslope = slopes[2];);
@@ -354,14 +327,14 @@ amrex_calc_slopes_eb_special (int i, int j, int k, int n,
     // 
 
     // X direction
-    if (flag(i,j,k).isRegular() and flag(i-1,j,k).isRegular() and flag(i+1,j,k).isRegular()) 
+    if (flag(i,j,k).isRegular() and flag(i-1,j,k).isRegular() and flag(i+1,j,k).isRegular() and (domlo_x <= i-1 and i+1 <= domhi_x) ) 
     {
         int order = 2;
         xslope = amrex_calc_xslope(i,j,k,n,order,state);
     }
 
     // Y direction
-    if (flag(i,j,k).isRegular() and flag(i,j-1,k).isRegular() and flag(i,j+1,k).isRegular()) 
+    if (flag(i,j,k).isRegular() and flag(i,j-1,k).isRegular() and flag(i,j+1,k).isRegular() and (domlo_y <= j-1 and j+1 <= domhi_y) ) 
     {
         int order = 2;
         yslope = amrex_calc_yslope(i,j,k,n,order,state);
@@ -369,7 +342,7 @@ amrex_calc_slopes_eb_special (int i, int j, int k, int n,
 
 #if (AMREX_SPACEDIM == 3)
     // Z direction
-    if (flag(i,j,k).isRegular() and flag(i,j,k-1).isRegular() and flag(i,j,k+1).isRegular()) 
+    if (flag(i,j,k).isRegular() and flag(i,j,k-1).isRegular() and flag(i,j,k+1).isRegular() and (domlo_z <= k-1 and k+1 <= domhi_z) ) 
     {
         int order = 2;
         zslope = amrex_calc_zslope(i,j,k,n,order,state);
@@ -438,6 +411,7 @@ amrex_calc_slopes_extdir_eb (int i, int j, int k, int n,
     } else {
 
     amrex::Real A[dim_a][AMREX_SPACEDIM];
+    amrex::Real du[dim_a];
 
     //
     // Correct only those cells which are affected by extdir:
@@ -485,16 +459,20 @@ amrex_calc_slopes_extdir_eb (int i, int j, int k, int n,
 #endif
                     }
 
+                    du[lc] = state(i+ii,j+jj,k+kk,n) - state(i,j,k,n);
+
                  } else {
                     AMREX_D_TERM(A[lc][0] = 0.0;,
                                  A[lc][1] = 0.0;,
                                  A[lc][2] = 0.0;);
+
+                  du[lc] = 0.0;
                 }
                 lc++;
               }
             }
         }
-        const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,state,flag);
+        const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,du);
         AMREX_D_TERM(xslope = slopes[0];,
                      yslope = slopes[1];,
                      zslope = slopes[2];);
@@ -541,18 +519,22 @@ amrex_calc_slopes_extdir_eb (int i, int j, int k, int n,
 #endif
                     }
 
+                    du[lc] = state(i+ii,j+jj,k+kk,n) - state(i,j,k,n);
+
                  } else {
                     AMREX_D_TERM(A[lc][0] = 0.0;,
                                  A[lc][1] = 0.0;,
                                  A[lc][2] = 0.0;);
-                }
+
+                    du[lc] = 0.0;
+                 }
 
                 lc++;
               }
             }
         }
 
-        const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,state,flag);
+        const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,du);
         AMREX_D_TERM(xslope = slopes[0];,
                      yslope = slopes[1];,
                      zslope = slopes[2];);
@@ -589,17 +571,21 @@ amrex_calc_slopes_extdir_eb (int i, int j, int k, int n,
                         A[lc][2] = kk + ccent(i+ii,j+jj,k+kk,2) - ccent(i,j,k,2);
                     }
 
+                    du[lc] = state(i+ii,j+jj,k+kk,n) - state(i,j,k,n);
+
                  } else {
                     AMREX_D_TERM(A[lc][0] = 0.0;,
                                  A[lc][1] = 0.0;,
                                  A[lc][2] = 0.0;);
+
+                    du[lc] = 0.0;
                 }
 
                 lc++;
               }
             }
         }
-        const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,state,flag);
+        const auto& slopes = amrex_calc_slopes_eb_given_A (i,j,k,n,A,du);
 
         AMREX_D_TERM(xslope = slopes[0];,
                      yslope = slopes[1];,

@@ -96,7 +96,7 @@ void mlebabeclap_adotx_centroid(
                                    (vfrc(i,j,k) + vfrc(ii,jj,k));
             }
             // x(ii,jj,k,n) = (vfrc(i,j,k) * x_orig(i,j,k,n) + vfrc(ii,jj,k) * x_orig(ii,jj,k,n)) /
-                              (vfrc(i,j,k) + vfrc(ii,jj,k));
+            //                (vfrc(i,j,k) + vfrc(ii,jj,k));
  
 
             amrex::Print() << "MERGING SMALL CELL " << IntVect(i,j) << 
@@ -105,7 +105,10 @@ void mlebabeclap_adotx_centroid(
                                        ccent_orig(ii,jj,k,0) << " " << ccent_orig(ii,jj,k,1) <<
                              " TO " << ccent(ii,jj,k,0) << " " << ccent(ii,jj,k,1) << std::endl;
 
-            x(ii,jj,k,n) = interp_to_new_centroid(ii,jj,k,n,x_orig,phieb,flag,ccent_orig,ccent,bcent,vfrc,is_eb_inhomog);
+
+            x(ii,jj,k,n) = interp_to_new_centroid(ii,jj,k,n,x_orig,phieb,flag,ccent_orig,ccent,bcent,vfrc,is_eb_inhomog,
+                                                  on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                  on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
             amrex::Print() << "VALUE OF LARGE CELL MOVE FROM " << x_orig(ii,jj,k,n) << " TO " << x(ii,jj,k,n) << std::endl;
 
         }
@@ -318,8 +321,10 @@ void mlebabeclap_adotx_centroid(
             // This version is hacked to not use the small-cell value
             // TODO: we should generalize to include the ext-dir version as well
             const auto& slopes_at_ii_jj =
-                amrex_calc_slopes_eb_special (ii, jj, k, n, y, ccent, flag, vfrc, vol_eps);
+                amrex_calc_slopes_eb_special (ii, jj, k, n, y, ccent, flag, vfrc, vol_eps,
+                                             domlo_x, domlo_y, domhi_x, domhi_y);
 
+                
             amrex::Print() << "SLOPES IN LARGE CELL ARE NOW " << slopes_at_ii_jj[0] << " " <<
                                slopes_at_ii_jj[1] << std::endl;
 
