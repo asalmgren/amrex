@@ -135,7 +135,6 @@ void mlebabeclap_adotx_centroid(
                        - bX(i  ,j,k,n)*(x(i  ,j,k,n) - x(i-1,j,k,n)))
                 - dhy * (bY(i,j+1,k,n)*(x(i,j+1,k,n) - x(i,j  ,k,n))
                        - bY(i,j  ,k,n)*(x(i,j  ,k,n) - x(i,j-1,k,n)));
-           if (i == 16 and j == 4) amrex::Print() << "MAKING REGULAR Y(16,4) " << y(16,4,0,0) << std::endl;
         }
         else
         {
@@ -246,11 +245,8 @@ void mlebabeclap_adotx_centroid(
             // y(i,j,k,n) = alpha*a(i,j,k)*x(i,j,k,n) + 
             y(i,j,k,n) = 
                 (1.0/kappa) * (dhx*(apxm*fxm-apxp*fxp) + dhy*(apym*fym-apyp*fyp) - dhx*feb);
-           if (i == 16 and j == 4) amrex::Print() << "MAKING IRREGULAR Y(16,4) " << y(16,4,0,0) << std::endl;
         }
     }); // end of loop over box
-
-    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     // Add update from small cell to update of large cell
     amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
@@ -287,8 +283,6 @@ void mlebabeclap_adotx_centroid(
             amrex::Print() << "NEW UPDATE TO LARGE CELL IS NOW " << y(ii,jj,k,n) << std::endl;
         }
     }); // end of loop over box
-
-    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     // Call cell-centroid-centered slopes routines (in Src/EB) to define slope 
     // and put values on original centroid
@@ -334,8 +328,6 @@ void mlebabeclap_adotx_centroid(
             slopes(ii,jj,k,1) = slopes_at_ii_jj[1];
         }
     }); // end of loop over box
-
-    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -388,8 +380,6 @@ void mlebabeclap_adotx_centroid(
         }
     }); // end of loop over box
 
-    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
-
     // We didn't add the a*alpha*x term above so let's not forget to add it here
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -398,8 +388,6 @@ void mlebabeclap_adotx_centroid(
             y(i,j,k,n) += alpha*a(i,j,k)*x(i,j,k,n);
         }
     }); // end of loop over box
-
-    amrex::Print() << "Y(16,4) " << y(16,4,0,0) << std::endl;
 
     // We don't need to reset the centroids because "ccent" here was just a tempoeary
 }

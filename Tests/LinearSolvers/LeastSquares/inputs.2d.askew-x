@@ -4,9 +4,9 @@ eb_is_homog_dirichlet = 1
 
 eb2.geom_type = channel
 
-eb2.channel_pt_on_top_wall = 0.2  0.0  0.0
+eb2.channel_pt_on_top_wall = 0.0  1.8  0.0
 eb2.channel_height = 1.0
-eb2.channel_rotation = 60.
+eb2.channel_rotation = -30.
 eb2.channel_has_fluid_inside = 1
 
 max_level = 0
@@ -20,8 +20,8 @@ is_periodic = 0  0  0
 scalars = 0  1
 
 use_poiseuille_1d = 1
-poiseuille_1d_pt_on_top_wall = 0.2  0.0  0.0
+poiseuille_1d_pt_on_top_wall = 0.0  1.8  0.0
 poiseuille_1d_height = 1.0
-poiseuille_1d_rotation = 60.
+poiseuille_1d_rotation = -30.
 
-plot_file = "plot-askew"
+plot_file = "plot-askew-x"

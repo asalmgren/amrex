@@ -548,7 +548,9 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
             // Don't include corner cells. Could make this even more strict
             // by removing the on_?_face restrictions.
             if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y))){
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
               continue;
             }
 
@@ -764,7 +766,9 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
 
             // Don't include corner cells.
             if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y))){
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
               continue;
             }
 
@@ -944,7 +948,9 @@ Real grad_eb_of_phi_on_centroids_extdir(int i,int j,int k,int n,
             // Don't include corner cells. Could make this even more strict
             // by removing the on_?_face restrictions.
             if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y))){
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
               continue;
             }
 
@@ -1065,7 +1071,9 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
 
             // Don't include corner cells.
             if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y))){
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
+                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
               continue;
             }
 
