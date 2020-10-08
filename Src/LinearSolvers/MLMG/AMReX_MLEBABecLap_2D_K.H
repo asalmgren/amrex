@@ -4,6 +4,8 @@
 #include <AMReX_EB_slopes_K.H>
 #include <AMReX_EB_LeastSquares_2D_K.H>
 
+#define VOL_EPS 0.03
+
 namespace amrex {
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
@@ -42,7 +44,7 @@ void mlebabeclap_adotx_centroid(
     // So first we copy (this "ccent" comes in uninitalized) then we do the merging
 
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged (thus not used in any stencils)
-    constexpr Real vol_eps = 2.e-4;
+    constexpr Real vol_eps = VOL_EPS;
 
     // First copy x_orig into x and ccent_orig into ccent
     Box gbx(amrex::grow(box,1));
@@ -562,7 +564,7 @@ void mlebabeclap_ebflux (int i, int j, int k, int n,
                          GpuArray<Real,AMREX_SPACEDIM> const& dxinv) noexcept
 {
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = VOL_EPS;
 
     Real dhx = dxinv[0];
 
@@ -650,7 +652,7 @@ void mlebabeclap_gsrb (Box const& box,
                        Box const& vbox, int redblack, int ncomp) noexcept
 {
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = VOL_EPS;
 
     const auto vlo = amrex::lbound(vbox);
     const auto vhi = amrex::ubound(vbox);
@@ -920,7 +922,7 @@ void mlebabeclap_flux_x (Box const& box, Array4<Real> const& fx,
                          bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = VOL_EPS;
 
     int lof = xbox.smallEnd(0);
     int hif = xbox.bigEnd(0);
@@ -974,7 +976,7 @@ void mlebabeclap_flux_y (Box const& box, Array4<Real> const& fy,
                          bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = VOL_EPS;
 
     int lof = ybox.smallEnd(1);
     int hif = ybox.bigEnd(1);
@@ -1064,7 +1066,7 @@ void mlebabeclap_grad_x (Box const& box, Array4<Real> const& gx, Array4<Real con
                          Real dxi, int ncomp, bool phi_on_centroid) noexcept
 {
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = VOL_EPS;
 
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -1105,7 +1107,7 @@ void mlebabeclap_grad_y (Box const& box, Array4<Real> const& gy, Array4<Real con
                          Real dyi, int ncomp, bool phi_on_centroid) noexcept
 {
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = VOL_EPS;
 
     amrex::LoopConcurrent(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -1294,7 +1296,7 @@ void mlebabeclap_cc0 (Box const& box, Array4<Real> const& coeff0,
                       bool beta_on_centroid, bool phi_on_centroid) noexcept
 {
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = VOL_EPS;
 
     amrex::Print() << "MLEBABecLap_2D_K  --> mlebabeclap_cc0\n";
 
