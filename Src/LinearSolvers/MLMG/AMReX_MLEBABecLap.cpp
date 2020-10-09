@@ -958,6 +958,7 @@ MLEBABecLap::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& rhs,
     const MultiCutFab* ccent = (factory) ? &(factory->getCentroid()) : nullptr;
 
     const bool is_eb_dirichlet =  isEBDirichlet();
+    const bool is_eb_inhomog = m_is_eb_inhomog;
 
     Array4<Real const> foo;
 
@@ -980,9 +981,31 @@ MLEBABecLap::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& rhs,
 #endif
 
         const Box& vbx = mfi.validbox();
+        const Box& gbx(amrex::grow(vbx,1));
         const auto& solnfab = sol.array(mfi);
         const auto& rhsfab  = rhs.const_array(mfi);
         const auto& afab    = acoef.const_array(mfi);
+
+        const Box& domain_box = m_geom[amrlev][mglev].Domain();
+
+        FArrayBox ccent_merged;
+        FArrayBox slopes_merged;
+        FArrayBox soln_merged;
+ 
+        AMREX_D_TERM(
+            const int domlo_x = domain_box.smallEnd(0);
+            const int domhi_x = domain_box.bigEnd(0);,
+            const int domlo_y = domain_box.smallEnd(1);
+            const int domhi_y = domain_box.bigEnd(1);,
+            const int domlo_z = domain_box.smallEnd(2);
+            const int domhi_z = domain_box.bigEnd(2););
+ 
+        AMREX_D_TERM(
+            const bool extdir_x = !(m_geom[amrlev][mglev].isPeriodic(0));,
+            const bool extdir_y = !(m_geom[amrlev][mglev].isPeriodic(1));,
+            const bool extdir_z = !(m_geom[amrlev][mglev].isPeriodic(2)););
+
+        auto bndry = m_bndry_sol[amrlev].get();
 
         AMREX_D_TERM(const auto& bxfab = bxcoef.const_array(mfi);,
                      const auto& byfab = bycoef.const_array(mfi);,
@@ -1081,6 +1104,31 @@ MLEBABecLap::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& rhs,
             auto dp2 = dtmp2.data();
 #endif
 
+            // DO We NEED ELIXIRs HERE?
+             ccent_merged.resize(gbx,AMREX_SPACEDIM);
+            slopes_merged.resize(gbx,AMREX_SPACEDIM);
+              soln_merged.resize(gbx,AMREX_SPACEDIM);
+
+            Array4<Real>  ccent_merged_fab =  ccent_merged.array();
+            Array4<Real> slopes_merged_fab = slopes_merged.array();
+            Array4<Real>   soln_merged_fab =   soln_merged.array();
+
+            AMREX_D_TERM(
+                const Orientation olo_x(0,Orientation::low );
+                const Orientation ohi_x(0,Orientation::high);,
+                const Orientation olo_y(1,Orientation::low );
+                const Orientation ohi_y(1,Orientation::high);,
+                const Orientation olo_z(2,Orientation::low );
+                const Orientation ohi_z(2,Orientation::high));;
+
+            AMREX_D_TERM(
+                const auto& bvlo_x = (bndry != nullptr) ? bndry->bndryValues(olo_x).array(mfi) : foo;
+                const auto& bvhi_x = (bndry != nullptr) ? bndry->bndryValues(ohi_x).array(mfi) : foo;,
+                const auto& bvlo_y = (bndry != nullptr) ? bndry->bndryValues(olo_y).array(mfi) : foo;
+                const auto& bvhi_y = (bndry != nullptr) ? bndry->bndryValues(ohi_y).array(mfi) : foo;,
+                const auto& bvlo_z = (bndry != nullptr) ? bndry->bndryValues(olo_z).array(mfi) : foo;
+                const auto& bvhi_z = (bndry != nullptr) ? bndry->bndryValues(ohi_z).array(mfi) : foo;);
+
             AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( vbx, thread_box,
             {
                 AMREX_DPCPP_ONLY(auto rhsfab = dp[0]);
@@ -1115,20 +1163,44 @@ MLEBABecLap::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& rhs,
                 AMREX_DPCPP_3D_ONLY(auto m3 = dp2[4]);
                 AMREX_DPCPP_3D_ONLY(auto m5 = dp2[5]);
 
-                mlebabeclap_gsrb(thread_box, solnfab, rhsfab, alpha, afab,
-                                 AMREX_D_DECL(dhx, dhy, dhz),
-                                 AMREX_D_DECL(bxfab,byfab,bzfab),
-                                 AMREX_D_DECL(m0,m2,m4),
-                                 AMREX_D_DECL(m1,m3,m5),
-                                 AMREX_D_DECL(f0fab,f2fab,f4fab),
-                                 AMREX_D_DECL(f1fab,f3fab,f5fab),
-                                 ccmfab, flagfab, vfracfab,
-                                 AMREX_D_DECL(apxfab,apyfab,apzfab),
-                                 AMREX_D_DECL(fcxfab,fcyfab,fczfab),
-                                 bafab, bcfab, ccfab, bebfab, cc0fab,
-                                 is_eb_dirichlet,
-                                 beta_on_centroid, treat_phi_as_on_centroid,
-                                 vbx, redblack, nc);
+                if (treat_phi_as_on_centroid) {
+                   mlebabeclap_gsrb_centroid(thread_box, solnfab, rhsfab, alpha, afab,
+                                    AMREX_D_DECL(dhx, dhy, dhz),
+                                    AMREX_D_DECL(bxfab,byfab,bzfab),
+                                    AMREX_D_DECL(m0,m2,m4),
+                                    AMREX_D_DECL(m1,m3,m5),
+                                    AMREX_D_DECL(f0fab,f2fab,f4fab),
+                                    AMREX_D_DECL(f1fab,f3fab,f5fab),
+                                    ccmfab, flagfab, vfracfab,
+                                    AMREX_D_DECL(apxfab,apyfab,apzfab),
+                                    AMREX_D_DECL(fcxfab,fcyfab,fczfab),
+                                    bafab, bcfab, ccfab, bebfab, cc0fab,
+                                    soln_merged_fab,
+                                    ccent_merged_fab,
+                                    slopes_merged_fab,
+                                    AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
+                                    AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
+                                    AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
+                                    AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
+                                    AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
+                                    is_eb_dirichlet, is_eb_inhomog,
+                                    vbx, redblack, nc);
+                } else {
+                   mlebabeclap_gsrb(thread_box, solnfab, rhsfab, alpha, afab,
+                                    AMREX_D_DECL(dhx, dhy, dhz),
+                                    AMREX_D_DECL(bxfab,byfab,bzfab),
+                                    AMREX_D_DECL(m0,m2,m4),
+                                    AMREX_D_DECL(m1,m3,m5),
+                                    AMREX_D_DECL(f0fab,f2fab,f4fab),
+                                    AMREX_D_DECL(f1fab,f3fab,f5fab),
+                                    ccmfab, flagfab, vfracfab,
+                                    AMREX_D_DECL(apxfab,apyfab,apzfab),
+                                    AMREX_D_DECL(fcxfab,fcyfab,fczfab),
+                                    bafab, bcfab, ccfab, bebfab, cc0fab,
+                                    is_eb_dirichlet,
+                                    beta_on_centroid, treat_phi_as_on_centroid,
+                                    vbx, redblack, nc);
+                }
             });
         }
     }
@@ -1529,12 +1601,40 @@ MLEBABecLap::normalize (int amrlev, int mglev, MultiFab& mf) const
     const MultiCutFab* ccent = (factory) ? &(factory->getCentroid()) : nullptr;
 
     bool is_eb_dirichlet =  isEBDirichlet();
+    const bool is_eb_inhomog = m_is_eb_inhomog;
 
     Array4<Real const> foo;
 
     const Real ascalar = m_a_scalar;
     const Real bscalar = m_b_scalar;
     const int ncomp = getNComp();
+
+    const Box& domain_box = m_geom[amrlev][mglev].Domain();
+
+        FArrayBox ccent_merged;
+        FArrayBox slopes_merged;
+        FArrayBox merged_gamma;
+ 
+
+    AMREX_D_TERM(
+        const int domlo_x = domain_box.smallEnd(0);
+        const int domhi_x = domain_box.bigEnd(0);,
+        const int domlo_y = domain_box.smallEnd(1);
+        const int domhi_y = domain_box.bigEnd(1);,
+        const int domlo_z = domain_box.smallEnd(2);
+        const int domhi_z = domain_box.bigEnd(2););
+
+    AMREX_D_TERM(
+        const bool extdir_x = !(m_geom[amrlev][mglev].isPeriodic(0));,
+        const bool extdir_y = !(m_geom[amrlev][mglev].isPeriodic(1));,
+        const bool extdir_z = !(m_geom[amrlev][mglev].isPeriodic(2)););
+
+    auto bndry = m_bndry_sol[amrlev].get();
+
+    // Create a dummy MF that we can use to compute the diagonal coefficient
+    MultiFab mf_dummy;
+    mf_dummy.define(m_grids[amrlev][mglev], m_dmap[amrlev][mglev], 1, 1);
+    mf_dummy.setVal(0.0);
 
     MFItInfo mfi_info;
     if (Gpu::notInLaunchRegion()) mfi_info.EnableTiling();
@@ -1544,6 +1644,8 @@ MLEBABecLap::normalize (int amrlev, int mglev, MultiFab& mf) const
     for (MFIter mfi(mf, mfi_info); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
+        const Box& gbx(amrex::grow(bx,1));
+        Array4<Real> const& xfab = mf_dummy.array(mfi);
         Array4<Real> const& fab = mf.array(mfi);
         Array4<Real const> const& afab = acoef.const_array(mfi);
         AMREX_D_TERM(Array4<Real const> const& bxfab = bxcoef.const_array(mfi);,
@@ -1576,9 +1678,37 @@ MLEBABecLap::normalize (int amrlev, int mglev, MultiFab& mf) const
             Array4<Real const> const& bafab = barea->const_array(mfi);
             Array4<Real const> const& bcfab = bcent->const_array(mfi);
             Array4<Real const> const& ccfab = ccent->const_array(mfi);
+            Array4<Real const> const& phiebfab = (is_eb_dirichlet && is_eb_inhomog)
+                ? m_eb_phi[amrlev]->const_array(mfi) : foo;
+
+            // DO We NEED ELIXIRs HERE?
+             ccent_merged.resize(gbx,AMREX_SPACEDIM);
+            slopes_merged.resize(gbx,AMREX_SPACEDIM);
+             merged_gamma.resize(gbx,AMREX_SPACEDIM);
+
+            Array4<Real>  ccent_merged_fab =  ccent_merged.array();
+            Array4<Real> slopes_merged_fab = slopes_merged.array();
+            Array4<Real>  merged_gamma_fab = merged_gamma.array();
+
+            AMREX_D_TERM(
+                const Orientation olo_x(0,Orientation::low );
+                const Orientation ohi_x(0,Orientation::high);,
+                const Orientation olo_y(1,Orientation::low );
+                const Orientation ohi_y(1,Orientation::high);,
+                const Orientation olo_z(2,Orientation::low );
+                const Orientation ohi_z(2,Orientation::high));;
+
+            AMREX_D_TERM(
+                const auto& bvlo_x = (bndry != nullptr) ? bndry->bndryValues(olo_x).array(mfi) : foo;
+                const auto& bvhi_x = (bndry != nullptr) ? bndry->bndryValues(ohi_x).array(mfi) : foo;,
+                const auto& bvlo_y = (bndry != nullptr) ? bndry->bndryValues(olo_y).array(mfi) : foo;
+                const auto& bvhi_y = (bndry != nullptr) ? bndry->bndryValues(ohi_y).array(mfi) : foo;,
+                const auto& bvlo_z = (bndry != nullptr) ? bndry->bndryValues(olo_z).array(mfi) : foo;
+                const auto& bvhi_z = (bndry != nullptr) ? bndry->bndryValues(ohi_z).array(mfi) : foo;);
+
 
             bool phi_on_centroid = (m_phi_loc == Location::CellCentroid);
-            bool treat_phi_as_on_centroid = (phi_on_centroid and (mglev == 0));
+            bool treat_phi_as_centroid = (phi_on_centroid and (mglev == 0));
 
 #ifdef AMREX_USE_DPCPP
             // xxxxx DPCPP todo: kernel size
@@ -1589,18 +1719,44 @@ MLEBABecLap::normalize (int amrlev, int mglev, MultiFab& mf) const
 
             AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( bx, tbx,
             {
-                mlebabeclap_normalize(tbx, fab, ascalar, afab,
-                                      AMREX_D_DECL(dhx, dhy, dhz),
-                                      AMREX_D_DECL(bxfab, byfab, bzfab),
-                                      ccmfab, flagfab, vfracfab,
-                                      AMREX_D_DECL(apxfab,apyfab,apzfab),
-#ifdef AMREX_USE_DPCPP
-                                      AMREX_D_DECL(dp[0],dp[1],dp[2]),
-#else
-                                      AMREX_D_DECL(fcxfab,fcyfab,fczfab),
-#endif
-                                      bafab, bcfab, ccfab, bebfab, is_eb_dirichlet,
-                                      treat_phi_as_on_centroid, ncomp);
+                if (treat_phi_as_centroid) 
+                {
+                   mlebabeclap_normalize_centroid(tbx, fab, xfab, ascalar, afab,
+                                         AMREX_D_DECL(dhx, dhy, dhz),
+                                         AMREX_D_DECL(bxfab, byfab, bzfab),
+                                         ccmfab, flagfab, vfracfab,
+                                         AMREX_D_DECL(apxfab,apyfab,apzfab),
+   #ifdef AMREX_USE_DPCPP
+                                         AMREX_D_DECL(dp[0],dp[1],dp[2]),
+   #else
+                                         AMREX_D_DECL(fcxfab,fcyfab,fczfab),
+   #endif
+                                         bafab, bcfab, ccfab, bebfab, 
+phiebfab,
+                                         merged_gamma_fab,
+                                         ccent_merged_fab,
+                                         slopes_merged_fab,
+                                         AMREX_D_DECL(bvlo_x,bvlo_y,bvlo_z),
+                                         AMREX_D_DECL(bvhi_x,bvhi_y,bvhi_z),
+                                         AMREX_D_DECL(domlo_x, domlo_y, domlo_z),
+                                         AMREX_D_DECL(domhi_x, domhi_y, domhi_z),
+                                         AMREX_D_DECL(extdir_x, extdir_y, extdir_z),
+
+                                         is_eb_dirichlet, is_eb_inhomog, ncomp);
+                } else {
+                   mlebabeclap_normalize(tbx, fab, ascalar, afab,
+                                         AMREX_D_DECL(dhx, dhy, dhz),
+                                         AMREX_D_DECL(bxfab, byfab, bzfab),
+                                         ccmfab, flagfab, vfracfab,
+                                         AMREX_D_DECL(apxfab,apyfab,apzfab),
+   #ifdef AMREX_USE_DPCPP
+                                         AMREX_D_DECL(dp[0],dp[1],dp[2]),
+   #else
+                                         AMREX_D_DECL(fcxfab,fcyfab,fczfab),
+   #endif
+                                         bafab, bcfab, ccfab, bebfab, is_eb_dirichlet,
+                                         treat_phi_as_centroid, ncomp);
+                }
             });
         }
     }

@@ -15,6 +15,7 @@ void MyTest::initializePoiseuilleDataFor2D(int ilev) {
     Array4<Real> const &fab_gy = grad_y_analytic[ilev].array(mfi);
     Array4<Real> const &fab_eb = grad_eb_analytic[ilev].array(mfi);
     Array4<Real> const &fab_lap = lap_analytic[ilev].array(mfi);
+    Array4<Real> const &fab_rhs_solve = rhs_solve[ilev].array(mfi);
 
     const FabArray<EBCellFlagFab> *flags =
         &(factory[ilev]->getMultiEBCellFlagFab());
@@ -80,11 +81,16 @@ void MyTest::initializePoiseuilleDataFor2D(int ilev) {
         fab_gy(i, j, k, 1) = 0.0;
         fab_lap(i, j, k, 0) = 0.0;
         fab_lap(i, j, k, 1) = 0.0;
+        fab_rhs_solve(i, j, k, 0) = 0.0;
+        fab_rhs_solve(i, j, k, 1) = 0.0;
       } else {
         fab_lap(i, j, k, 0) = 2.0 * a * a * std::cos(t) / (a * a + b * b) +
                               2.0 * b * b * std::cos(t) / (a * a + b * b);
         fab_lap(i, j, k, 1) = 2.0 * a * a * std::sin(t) / (a * a + b * b) +
                               2.0 * b * b * std::sin(t) / (a * a + b * b);
+
+        fab_rhs_solve(i, j, k, 0) = fab_lap(i, j, k, 0);
+        fab_rhs_solve(i, j, k, 1) = fab_lap(i, j, k, 1);
 
         Real rxl = i * dx[0];
         Real ryl = (j + 0.5 + fcx(i, j, k, 0)) * dx[1];

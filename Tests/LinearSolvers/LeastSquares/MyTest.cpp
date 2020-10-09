@@ -61,6 +61,7 @@ MyTest::compute_gradient ()
     {
         const Box& bx = mfi.fabbox();
         Array4<const Real> const& phi_arr     = phi[ilev].array(mfi);
+        Array4<      Real> const& phi_soln_arr= phi_soln[ilev].array(mfi);
         Array4<const Real> const& phi_eb_arr  = phieb[ilev].array(mfi);
         Array4<      Real> const& grad_x_arr  = grad_x[ilev].array(mfi);
         Array4<      Real> const& grad_y_arr  = grad_y[ilev].array(mfi);
@@ -93,6 +94,7 @@ MyTest::compute_gradient ()
         [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
         {
             ccentr_arr(i,j,k,n) = ccent(i,j,k,n);
+            phi_soln_arr(i,j,k,n) = phi_arr(i,j,k,n);
             Real yloc_on_xface = fcx(i,j,k,0);
             Real xloc_on_yface = fcy(i,j,k,0);
             Real nx = norm(i,j,k,0);
@@ -242,6 +244,8 @@ MyTest::solve ()
        Vector<Array<MultiFab,AMREX_SPACEDIM> > bcoef_comp(max_level + 1);
        Vector<MultiFab> coeff0_comp(max_level + 1);
        Vector<MultiFab> bcoef_eb_comp(max_level + 1);
+       Vector<MultiFab> phi_soln_comp(max_level + 1);
+       Vector<MultiFab> rhs_solve_comp(max_level + 1);
 
        Vector<MultiFab> phi_eb(max_level + 1);
 
@@ -250,6 +254,8 @@ MyTest::solve ()
            rhs_comp[ilev]   = MultiFab(rhs[ilev]  , make_alias, n, 1);
            acoef_comp[ilev] = MultiFab(acoef[ilev], make_alias, n, 1);
            coeff0_comp[ilev] = MultiFab(coeff0[ilev], make_alias, n, 1);
+           phi_soln_comp[ilev]   = MultiFab(phi_soln[ilev]  , make_alias, n, 1);
+           rhs_solve_comp[ilev]   = MultiFab(rhs_solve[ilev]  , make_alias, n, 1);
 
            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
               bcoef_comp[ilev][idim] = MultiFab(bcoef[ilev][idim], make_alias, n, 1);
@@ -322,13 +328,20 @@ MyTest::solve ()
          }
        }
 
-       MLMG mlmg(mleb);
+       MLMG mlmg_apply(mleb);
 
-       mlmg.apply(amrex::GetVecOfPtrs(rhs_comp), amrex::GetVecOfPtrs(phi_comp));
+       mlmg_apply.apply(amrex::GetVecOfPtrs(rhs_comp), amrex::GetVecOfPtrs(phi_comp));
 
        for(int ilev = 0; ilev <= max_level; ++ilev) {
          MultiFab::Copy(coeff0_comp[ilev],*mleb.getCoeff0(ilev,0),0,0,1,0);
        }
+
+       MLMG mlmg_solve(mleb);
+       mlmg_solve.setVerbose(verbose);
+       mlmg_solve.setBottomVerbose(bottom_verbose);
+       mlmg_solve.solve(amrex::GetVecOfPtrs(phi_soln_comp), 
+                  amrex::GetVecOfConstPtrs(rhs_solve_comp),
+                  reltol, abstol);
     }
 }
 
@@ -340,7 +353,7 @@ MyTest::writePlotfile ()
         const MultiFab& vfrc = factory[ilev]->getVolFrac();
 
 #if (AMREX_SPACEDIM == 2)
-        plotmf[ilev].define(grids[ilev],dmap[ilev],17,0);
+        plotmf[ilev].define(grids[ilev],dmap[ilev],19,0);
         MultiFab::Copy(plotmf[ilev], phi[ilev], 0, 0, 2, 0);
         MultiFab::Copy(plotmf[ilev], rhs[ilev], 0, 2, 2, 0);
         MultiFab::Copy(plotmf[ilev], vfrc, 0, 4, 1, 0);
@@ -350,6 +363,7 @@ MyTest::writePlotfile ()
         MultiFab::Copy(plotmf[ilev], grad_eb[ilev], 0, 11, 2, 0);
         MultiFab::Copy(plotmf[ilev], ccentr[ilev], 0, 13, 2, 0);
         MultiFab::Copy(plotmf[ilev], coeff0[ilev], 0, 15, 2, 0);
+        MultiFab::Copy(plotmf[ilev], phi_soln[ilev], 0, 17, 2, 0);
     }
     WriteMultiLevelPlotfile(plot_file_name, max_level+1,
                             amrex::GetVecOfConstPtrs(plotmf),
@@ -361,7 +375,8 @@ MyTest::writePlotfile ()
                              "dudy", "dvdy",
                              "dudn", "dvdn",
                              "ccent_x", "ccent_y",
-                             "coeff0_u", "coeff0_v"},
+                             "coeff0_u", "coeff0_v",
+                             "u_soln", "v_soln"},
                             geom, 0.0, Vector<int>(max_level+1,0),
                             Vector<IntVect>(max_level,IntVect{2}));
 
@@ -473,6 +488,7 @@ MyTest::readParameters ()
     pp.query("max_bottom_iter", max_bottom_iter);
     pp.query("bottom_reltol", bottom_reltol);
     pp.query("reltol", reltol);
+    pp.query("abstol", abstol);
     pp.query("linop_maxorder", linop_maxorder);
     pp.query("max_coarsening_level", max_coarsening_level);
 #ifdef AMREX_USE_HYPRE

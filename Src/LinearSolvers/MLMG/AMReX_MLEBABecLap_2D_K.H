@@ -101,18 +101,9 @@ void mlebabeclap_adotx_centroid(
             //                (vfrc(i,j,k) + vfrc(ii,jj,k));
  
 
-            amrex::Print() << "MERGING SMALL CELL " << IntVect(i,j) << 
-                             " INTO LARGE CELL "    << IntVect(ii,jj) << std::endl;
-            amrex::Print() << "CENTROID OF LARGE CELL MOVE FROM " << 
-                                       ccent_orig(ii,jj,k,0) << " " << ccent_orig(ii,jj,k,1) <<
-                             " TO " << ccent(ii,jj,k,0) << " " << ccent(ii,jj,k,1) << std::endl;
-
-
             x(ii,jj,k,n) = interp_to_new_centroid(ii,jj,k,n,x_orig,phieb,flag,ccent_orig,ccent,bcent,vfrc,is_eb_inhomog,
                                                   on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                   on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
-            amrex::Print() << "VALUE OF LARGE CELL MOVE FROM " << x_orig(ii,jj,k,n) << " TO " << x(ii,jj,k,n) << std::endl;
-
         }
     }); // end of loop over box
 
@@ -242,7 +233,6 @@ void mlebabeclap_adotx_centroid(
                 feb *= ba(i,j,k) * beb(i,j,k,n);
             }
 
-            // y(i,j,k,n) = alpha*a(i,j,k)*x(i,j,k,n) + 
             y(i,j,k,n) = 
                 (1.0/kappa) * (dhx*(apxm*fxm-apxp*fxp) + dhy*(apym*fym-apyp*fyp) - dhx*feb);
         }
@@ -272,15 +262,9 @@ void mlebabeclap_adotx_centroid(
                 jj = j+1;
             }
 
-            amrex::Print() << "ADDING UPDATE SMALL CELL " << IntVect(i,j) << 
-                             " INTO LARGE CELL "          << IntVect(ii,jj) << std::endl;
-            amrex::Print() << "SMALL UPDATE IS " << y(i,j,k,n)    << std::endl;
-            amrex::Print() << "LARGE UPDATE IS " << y(ii,jj,k,n) << std::endl;
-
             y(ii,jj,k,n) = (vfrc(i,j,k) * y(i,j,k,n) + vfrc(ii,jj,k) * y(ii,jj,k,n) ) /
                            (vfrc(i,j,k) + vfrc(ii,jj,k));
 
-            amrex::Print() << "NEW UPDATE TO LARGE CELL IS NOW " << y(ii,jj,k,n) << std::endl;
         }
     }); // end of loop over box
 
@@ -309,20 +293,11 @@ void mlebabeclap_adotx_centroid(
                 jj = j+1;
             }
 
-            amrex::Print() << "ADDING UPDATE SMALL CELL " << IntVect(i,j) << 
-                             " INTO LARGE CELL          " << IntVect(ii,jj) << std::endl;
-            amrex::Print() << "SMALL UPDATE IS " << y(i,j,k,n)    << std::endl;
-            amrex::Print() << "LARGE UPDATE IS " << y(ii,jj,k,n) << std::endl;
-
             // This version is hacked to not use the small-cell value
             // TODO: we should generalize to include the ext-dir version as well
             const auto& slopes_at_ii_jj =
                 amrex_calc_slopes_eb_special (ii, jj, k, n, y, ccent, flag, vfrc, vol_eps,
                                              domlo_x, domlo_y, domhi_x, domhi_y);
-
-                
-            amrex::Print() << "SLOPES IN LARGE CELL ARE NOW " << slopes_at_ii_jj[0] << " " <<
-                               slopes_at_ii_jj[1] << std::endl;
 
             slopes(ii,jj,k,0) = slopes_at_ii_jj[0];
             slopes(ii,jj,k,1) = slopes_at_ii_jj[1];
@@ -373,9 +348,6 @@ void mlebabeclap_adotx_centroid(
 
            // Extrapolate to large cell centroid
            y(ii,jj,k,0) += dx_large * slopes(ii,jj,k,0) + dy_large * slopes(ii,jj,k,1);
-
-           amrex::Print() << "Y IN SMALL CELL IS NOW " << y( i, j,k,n) << std::endl;
-           amrex::Print() << "Y IN LARGE CELL IS NOW " << y(ii,jj,k,n) << std::endl;
 
         }
     }); // end of loop over box
@@ -617,6 +589,390 @@ void mlebabeclap_ebflux (int i, int j, int k, int n,
             feb(i,j,k,n) = -beb(i,j,k,n) * dphidn;
         }
     }
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void mlebabeclap_gsrb_centroid (Box const& box,
+                       Array4<Real> const& phi_orig, Array4<Real const> const& rhs,
+                       Real alpha, Array4<Real const> const& a,
+                       Real dhx, Real dhy,
+                       Array4<Real const> const& bX, Array4<Real const> const& bY,
+                       Array4<int const> const& m0, Array4<int const> const& m2,
+                       Array4<int const> const& m1, Array4<int const> const& m3,
+                       Array4<Real const> const& f0, Array4<Real const> const& f2,
+                       Array4<Real const> const& f1, Array4<Real const> const& f3,
+                       Array4<const int> const& ccm, Array4<EBCellFlag const> const& flag,
+                       Array4<Real const> const& vfrc,
+                       Array4<Real const> const& apx, Array4<Real const> const& apy,
+                       Array4<Real const> const& fcx, Array4<Real const> const& fcy,
+                       Array4<Real const> const& ba, Array4<Real const> const& bcent,
+                       Array4<Real const> const& ccent_orig,
+                       Array4<Real const> const& beb,
+                       Array4<Real const> const& cc0,
+                       Array4<Real> const& phi,
+                       Array4<Real> const& ccent,
+                       Array4<Real> const& slopes,
+                       Array4<Real const> const& bcval_xlo, Array4<Real const> const& bcval_ylo,
+                       Array4<Real const> const& bcval_xhi, Array4<Real const> const& bcval_yhi,
+                       const int& domlo_x,    const int& domlo_y,
+                       const int& domhi_x,    const int& domhi_y,
+                       const bool& on_x_face, const bool& on_y_face,
+                       bool is_eb_dirichlet, bool is_eb_inhomog,
+                       Box const& vbox, int redblack, int ncomp) noexcept
+{
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = VOL_EPS;
+
+    // By the time we get here we have put the problem in residual-correction form so we
+    //    treat Dirichlet bc's as homogeneous bc's
+    bool treat_eb_as_inhomog = false;
+    Array4<Real const> phieb;  // This is just a dummy array
+
+    Box gbx(amrex::grow(box,1));
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        ccent(i,j,k,0) = ccent_orig(i,j,k,0);
+        ccent(i,j,k,1) = ccent_orig(i,j,k,1);
+        phi(i,j,k,n) = phi_orig(i,j,k,n);
+    }); // end of loop over box
+
+    // Decide on who is merging
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps) 
+        {
+            // Pick cell to merge into based on largest face area
+            //     and redefine the centroid of (ii,jj)
+            int ii, jj;
+            Real apxm = apx(i  ,j  ,k);
+            Real apxp = apx(i+1,j  ,k);
+            Real apym = apy(i  ,j  ,k);
+            Real apyp = apy(i  ,j+1,k);
+
+            if (apxm > apxp and apxm > apym and apxm > apyp) {
+                ii = i-1;
+                jj = j  ;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * (1.+ccent_orig(i,j,k,0)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * ccent_orig(i,j,k,1) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                ii = i+1;
+                jj = j  ;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * (-1.+ccent_orig(i,j,k,0)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * ccent_orig(i,j,k,1) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            } else if (apym > apxm and apym > apxp and apym > apyp) {
+                ii = i  ;
+                jj = j-1;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * ccent_orig(i,j,k,0) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * (1.+ccent_orig(i,j,k,1)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                ii = i  ;
+                jj = j+1;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * ccent_orig(i,j,k,0) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * (-1.+ccent_orig(i,j,k,1)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            }
+
+            phi(ii,jj,k,n) = interp_to_new_centroid(ii,jj,k,n,phi_orig,phieb,flag,ccent_orig,ccent,bcent,vfrc,is_eb_inhomog,
+                                                  on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                  on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+        }
+    }); // end of loop over box
+
+
+    const auto vlo = amrex::lbound(vbox);
+    const auto vhi = amrex::ubound(vbox);
+
+
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if ((i+j+k+redblack) % 2 == 0)
+        {
+            if (flag(i,j,k).isCovered())
+            {
+                phi(i,j,k,n) = 0.0;
+            }
+            else
+            {
+                Real cf0 = (i == vlo.x and m0(vlo.x-1,j,k) > 0)
+                    ? f0(vlo.x,j,k,n) : 0.0;
+                Real cf1 = (j == vlo.y and m1(i,vlo.y-1,k) > 0)
+                    ? f1(i,vlo.y,k,n) : 0.0;
+                Real cf2 = (i == vhi.x and m2(vhi.x+1,j,k) > 0)
+                    ? f2(vhi.x,j,k,n) : 0.0;
+                Real cf3 = (j == vhi.y and m3(i,vhi.y+1,k) > 0)
+                    ? f3(i,vhi.y,k,n) : 0.0;
+
+                if (flag(i,j,k).isRegular() and (
+                   (flag(i-1,j  ,k).isRegular() and flag(i+1,j  ,k).isRegular() and
+                   flag(i  ,j-1,k).isRegular() and flag(i  ,j+1,k).isRegular()) ))
+                {
+                    Real gamma = alpha*a(i,j,k)
+                        + dhx * (bX(i+1,j,k,n) + bX(i,j,k,n))
+                        + dhy * (bY(i,j+1,k,n) + bY(i,j,k,n));
+
+                    Real rho =  dhx * (bX(i+1,j,k,n)*phi(i+1,j,k,n)
+                                     + bX(i  ,j,k,n)*phi(i-1,j,k,n))
+                              + dhy * (bY(i,j+1,k,n)*phi(i,j+1,k,n)
+                                     + bY(i,j  ,k,n)*phi(i,j-1,k,n));
+
+                    Real delta = dhx*(bX(i,j,k,n)*cf0 + bX(i+1,j,k,n)*cf2)
+                        +        dhy*(bY(i,j,k,n)*cf1 + bY(i,j+1,k,n)*cf3);
+
+                    Real res = rhs(i,j,k,n) - (gamma*phi(i,j,k,n) - rho);
+                    phi(i,j,k,n) += res/(gamma-delta);
+                }
+                else if (vfrc(i,j,k) >= vol_eps)
+                {
+                    // First get EB-aware slope that doesn't know about extdir
+                    bool needs_bdry_stencil = (i <= domlo_x) or (i >= domhi_x) or
+                                              (j <= domlo_y) or (j >= domhi_y);
+
+                    Real kappa = vfrc(i,j,k);
+                    Real apxm = apx(i,j,k);
+                    Real apxp = apx(i+1,j,k);
+                    Real apym = apy(i,j,k);
+                    Real apyp = apy(i,j+1,k);
+
+                    Real fxm = -bX(i,j,k,n)*(phi(i-1,j,k,n)-phi(i,j,k,n));
+                    Real oxm = -bX(i,j,k,n)*cf0;
+                    Real sxm =  bX(i,j,k,n);
+                    if ((apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
+                        Real yloc_on_xface = fcx(i,j,k,0);
+                        if(needs_bdry_stencil) {
+                           fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,phi,phieb,
+                                                            flag,ccent,bcent,apx,apy,vfrc,yloc_on_xface,
+                                                            is_eb_dirichlet,treat_eb_as_inhomog,vol_eps,
+                                                            on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                            on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                        } else {
+                           fxm = grad_x_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                            yloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
+                        }
+                        fxm *= bX(i,j,k,n);
+                        oxm = 0.0;
+                    }
+
+                    Real fxp =  bX(i+1,j,k,n)*(phi(i+1,j,k,n)-phi(i,j,k,n));
+                    Real oxp =  bX(i+1,j,k,n)*cf2;
+                    Real sxp = -bX(i+1,j,k,n);
+                    if ((apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) ) {
+                        Real yloc_on_xface = fcx(i+1,j,k,0);
+                        if(needs_bdry_stencil) {
+                           fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,phi,phieb,
+                                                            flag,ccent,bcent,apx,apy,vfrc,yloc_on_xface,
+                                                            is_eb_dirichlet,treat_eb_as_inhomog,vol_eps,
+                                                            on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                            on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                        } else {   
+                           fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                            yloc_on_xface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
+                        }
+                        fxp *= bX(i+1,j,k,n);
+                        oxp = 0.0;
+                    }
+
+                    Real fym = -bY(i,j,k,n)*(phi(i,j-1,k,n)-phi(i,j,k,n));
+                    Real oym = -bY(i,j,k,n)*cf1;
+                    Real sym =  bY(i,j,k,n);
+                    if ((apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
+                        Real xloc_on_yface = fcy(i,j,k,0);
+                        if(needs_bdry_stencil) {
+                           fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,phi,phieb,
+                                                            flag,ccent,bcent,apx,apy,vfrc,xloc_on_yface,
+                                                            is_eb_dirichlet,treat_eb_as_inhomog,vol_eps,
+                                                            on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                            on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                        } else {
+                           fym = grad_y_of_phi_on_centroids(i,j,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                            xloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
+                        }
+                        fym *= bY(i,j,k,n);
+                        oym = 0.0;
+                    }
+
+                    Real fyp =  bY(i,j+1,k,n)*(phi(i,j+1,k,n)-phi(i,j,k,n));
+                    Real oyp =  bY(i,j+1,k,n)*cf3;
+                    Real syp = -bY(i,j+1,k,n);
+                    if ((apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0) ) {
+                        Real xloc_on_yface = fcy(i,j+1,k,0);
+                        if(needs_bdry_stencil) {
+                           fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,phi,phieb,flag,
+                                                            ccent,bcent,apx,apy,vfrc,xloc_on_yface,
+                                                            is_eb_dirichlet,treat_eb_as_inhomog,vol_eps,
+                                                            on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                            on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                        } else {
+                           fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                            xloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
+                        }
+                        fyp *= bX(i,j+1,k,n);
+                        oyp = 0.0;
+                    }
+
+                    Real vfrcinv = (1.0/kappa);
+                    Real gamma = alpha*a(i,j,k) + vfrcinv *
+                        (dhx*(apxm*sxm-apxp*sxp) +
+                         dhy*(apym*sym-apyp*syp));
+
+                    Real rho = -vfrcinv *
+                        (dhx*(apxm*fxm-apxp*fxp) +
+                         dhy*(apym*fym-apyp*fyp));
+
+                    Real delta = -vfrcinv *
+                        (dhx*(apxm*oxm-apxp*oxp) +
+                         dhy*(apym*oym-apyp*oyp));
+
+                    if (is_eb_dirichlet and flag(i,j,k).isSingleValued()) {
+                        Real dapx = apxm-apxp;
+                        Real dapy = apym-apyp;
+                        Real anorm = std::hypot(dapx,dapy);
+                        Real anorminv = 1.0/anorm;
+                        Real anrmx = dapx * anorminv;
+                        Real anrmy = dapy * anorminv;
+
+                        Real dphidn = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,phi,phieb,flag,ccent,bcent,vfrc,
+                                                                   anrmx,anrmy,treat_eb_as_inhomog,vol_eps,
+                                                                   on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                                   on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                        Real feb = dphidn * ba(i,j,k) * beb(i,j,k,n);
+                        rho += -vfrcinv*(-dhx)*feb;
+                    }
+
+                    Real res = rhs(i,j,k,n) - rho;
+                    phi(i,j,k,n) += res / cc0(i,j,k,n);
+                }
+            }
+        }
+    }); // end of loop over box
+
+    // Add update from small cell to update of large cell
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+           if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps) 
+           {
+               int ii,jj; 
+               Real apxm = apx(i  ,j  ,k);
+               Real apxp = apx(i+1,j  ,k);
+               Real apym = apy(i  ,j  ,k);
+               Real apyp = apy(i  ,j+1,k);
+               if (apxm > apxp and apxm > apym and apxm > apyp) {
+                   ii = i-1;
+                   jj = j  ;
+               } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                   ii = i+1;
+                   jj = j  ;
+               } else if (apym > apxm and apym > apxp and apym > apyp) {
+                   ii = i  ;
+                   jj = j-1;
+               } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                   ii = i  ;
+                   jj = j+1;
+               }
+
+               phi(ii,jj,k,n) = (vfrc(i,j,k) * phi(i,j,k,n) + vfrc(ii,jj,k) * phi(ii,jj,k,n) ) /
+                              (vfrc(i,j,k) + vfrc(ii,jj,k));
+
+        }
+    }); // end of loop over box
+
+    // Call cell-centroid-centered slopes routines (in Src/EB) to define slope 
+    // and put values on original centroid
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps and (i+j+k+redblack) % 2 == 0) 
+        {
+            int ii,jj; 
+            Real apxm = apx(i  ,j  ,k);
+            Real apxp = apx(i+1,j  ,k);
+            Real apym = apy(i  ,j  ,k);
+            Real apyp = apy(i  ,j+1,k);
+            if (apxm > apxp and apxm > apym and apxm > apyp) {
+                ii = i-1;
+                jj = j  ;
+            } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                ii = i+1;
+                jj = j  ;
+            } else if (apym > apxm and apym > apxp and apym > apyp) {
+                ii = i  ;
+                jj = j-1;
+            } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                ii = i  ;
+                jj = j+1;
+            }
+
+            // This version is hacked to not use the small-cell value
+            // TODO: we should generalize to include the ext-dir version as well
+            const auto& slopes_at_ii_jj =
+                amrex_calc_slopes_eb_special (ii, jj, k, n, phi, ccent, flag, vfrc, vol_eps,
+                                             domlo_x, domlo_y, domhi_x, domhi_y);
+
+            slopes(ii,jj,k,0) = slopes_at_ii_jj[0];
+            slopes(ii,jj,k,1) = slopes_at_ii_jj[1];
+        }
+    }); // end of loop over box
+
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps and (i+j+k+redblack) % 2 == 0) 
+        {
+            // Pick cell to merge into based on largest face area
+            //     and redefine the centroid of (ii,jj)
+            int ii, jj;
+            Real dx_small, dy_small;
+            Real dx_large, dy_large;
+            Real apxm = apx(i  ,j  ,k);
+            Real apxp = apx(i+1,j  ,k);
+            Real apym = apy(i  ,j  ,k);
+            Real apyp = apy(i  ,j+1,k);
+            if (apxm > apxp and apxm > apym and apxm > apyp) {
+                ii = i-1;
+                jj = j  ;
+                dx_small = ( 1.+ccent_orig( i, j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = (    ccent_orig( i, j,k,1)) - ccent(ii,jj,k,1);
+            } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                ii = i+1;
+                jj = j  ;
+                dx_small = (-1.+ccent_orig( i, j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = (    ccent_orig( i, j,k,1)) - ccent(ii,jj,k,1);
+            } else if (apym > apxm and apym > apxp and apym > apyp) {
+                ii = i  ;
+                jj = j-1;
+                dx_small = (    ccent_orig( i ,j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = ( 1.+ccent_orig( i ,j,k,1)) - ccent(ii,jj,k,1);
+            } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                ii = i  ;
+                jj = j+1;
+                dx_small = (    ccent_orig( i, j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = (-1.+ccent_orig( i, j,k,1)) - ccent(ii,jj,k,1);
+            }
+
+                dx_large = (    ccent_orig(ii,jj,k,0)) - ccent(ii,jj,k,0);
+                dy_large = (    ccent_orig(ii,jj,k,1)) - ccent(ii,jj,k,1);
+
+           // Extrapolate to small cell centroid
+           phi(i,j,k,n) = phi(ii,jj,k,0) + dx_small * slopes(ii,jj,k,0)  
+                                     + dy_small * slopes(ii,jj,k,1);
+
+           // Extrapolate to large cell centroid
+           phi(ii,jj,k,0) += dx_large * slopes(ii,jj,k,0) + dy_large * slopes(ii,jj,k,1);
+
+        }
+    }); // end of loop over box
+
+    // Set phi original values
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+         phi_orig(i,j,k,n) = phi(i,j,k,n);
+    }); // end of loop over box
+
+    // We don't need to reset the centroids because "ccent" here was just a tempoeary
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
@@ -1153,6 +1509,329 @@ void mlebabeclap_grad_y_0 (Box const& box, Array4<Real> const& gy, Array4<Real c
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void mlebabeclap_normalize_centroid (Box const& box, Array4<Real> const& phi,
+                            Array4<Real      > const& x,
+                            Real alpha, Array4<Real const> const& a,
+                            Real dhx, Real dhy,
+                            Array4<Real const> const& bX, Array4<Real const> const& bY,
+                            Array4<const int> const& ccm, Array4<EBCellFlag const> const& flag,
+                            Array4<Real const> const& vfrc,
+                            Array4<Real const> const& apx, Array4<Real const> const& apy,
+                            Array4<Real const> const& fcx, Array4<Real const> const& fcy,
+                            Array4<Real const> const& ba, Array4<Real const> const& bcent,
+                            Array4<Real const> const& ccent_orig, Array4<Real const> const& beb,
+                            Array4<Real const> const& phieb,
+                            Array4<Real> const& gamma,
+                            Array4<Real> const& ccent,
+                            Array4<Real> const& slopes,
+                            Array4<Real const> const& bcval_xlo, Array4<Real const> const& bcval_ylo,
+                            Array4<Real const> const& bcval_xhi, Array4<Real const> const& bcval_yhi,
+                            const int& domlo_x,    const int& domlo_y,
+                            const int& domhi_x,    const int& domhi_y,
+                            const bool& on_x_face, const bool& on_y_face,
+                            bool is_eb_dirichlet, bool is_eb_inhomog, int ncomp) noexcept
+{
+    constexpr Real vol_eps = VOL_EPS;
+
+    // First copy x_orig into x and ccent_orig into ccent
+    Box gbx(amrex::grow(box,1));
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        ccent(i,j,k,0) = ccent_orig(i,j,k,0);
+        ccent(i,j,k,1) = ccent_orig(i,j,k,1);
+    }); // end of loop over box
+
+
+    // Decide on who is merging
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps) 
+        {
+            // Pick cell to merge into based on largest face area
+            //     and redefine the centroid of (ii,jj)
+            int ii, jj;
+            Real apxm = apx(i  ,j  ,k);
+            Real apxp = apx(i+1,j  ,k);
+            Real apym = apy(i  ,j  ,k);
+            Real apyp = apy(i  ,j+1,k);
+
+            if (apxm > apxp and apxm > apym and apxm > apyp) {
+                ii = i-1;
+                jj = j  ;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * (1.+ccent_orig(i,j,k,0)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * ccent_orig(i,j,k,1) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                ii = i+1;
+                jj = j  ;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * (-1.+ccent_orig(i,j,k,0)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * ccent_orig(i,j,k,1) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            } else if (apym > apxm and apym > apxp and apym > apyp) {
+                ii = i  ;
+                jj = j-1;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * ccent_orig(i,j,k,0) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * (1.+ccent_orig(i,j,k,1)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                ii = i  ;
+                jj = j+1;
+                ccent(ii,jj,k,0) = (vfrc(i,j,k) * ccent_orig(i,j,k,0) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,0)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+                ccent(ii,jj,k,1) = (vfrc(i,j,k) * (-1.+ccent_orig(i,j,k,1)) + vfrc(ii,jj,k) * ccent_orig(ii,jj,k,1)) /
+                                   (vfrc(i,j,k) + vfrc(ii,jj,k));
+            }
+        }
+    }); // end of loop over box
+
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (flag(i,j,k).isCovered() ) {
+            gamma(i,j,k,n) = 1.0;
+        }
+        else if (flag(i,j,k).isRegular() and (
+                (flag(i-1,j  ,k).isRegular() and flag(i+1,j  ,k).isRegular() and
+                 flag(i  ,j-1,k).isRegular() and flag(i  ,j+1,k).isRegular()) ))
+        {
+            gamma(i,j,k,n) = alpha*a(i,j,k) + dhx*(bX(i,j,k,n) + bX(i+1,j,k,n))
+                                           + dhy*(bY(i,j,k,n) + bY(i,j+1,k,n));
+        }
+        else
+        {
+            // Set up a solution array where the only non-zero entry is at (i,j)
+            for (int jj = j-1; jj <= j+1; jj++)
+               for (int ii = i-1; ii <= i+1; ii++)
+               {
+                   x(ii,jj,k,n) = 0.0;
+               }
+            x(i,j,k,n) = 1.0;
+
+            Real kappa = vfrc(i,j,k);
+            Real apxm = apx(i,j,k);
+            Real apxp = apx(i+1,j,k);
+            Real apym = apy(i,j,k);
+            Real apyp = apy(i,j+1,k);
+
+            // First get EB-aware slope that doesn't know about extdir
+            bool needs_bdry_stencil = (i <= domlo_x) or (i >= domhi_x) or
+                                      (j <= domlo_y) or (j >= domhi_y);
+
+
+            Real fxm = bX(i,j,k,n) * (x(i,j,k,n)-x(i-1,j,k,n));
+            if ((apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) or vfrc(i+1,j,k) != 1.0) {
+                Real yloc_on_xface = fcx(i,j,k);
+                if(needs_bdry_stencil) {
+
+                  fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
+                                                          on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                          on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                } else {
+                  fxm = grad_x_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
+                }
+                fxm *= bX(i,j,k,n);
+            }
+
+            Real fxp = bX(i+1,j,k,n)*(x(i+1,j,k,n)-x(i,j,k,n));
+            if ((apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) or vfrc(i-1,j,k) != 1.0) {
+                Real yloc_on_xface = fcx(i+1,j,k,0);
+                if(needs_bdry_stencil) {
+                  fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
+                                                          on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                          on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                } else {
+                  fxp = grad_x_of_phi_on_centroids(i+1,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   yloc_on_xface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
+                }
+                fxp *= bX(i+1,j,k,n);
+            }
+
+            Real fym = bY(i,j,k,n)*(x(i,j,k,n)-x(i,j-1,k,n));
+            if ((apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0) or vfrc(i,j+1,k) != 1.0) {
+                Real xloc_on_yface = fcy(i,j,k,0);
+                if(needs_bdry_stencil) {
+                  fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
+                                                          on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                          on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+                } else {
+                  fym = grad_y_of_phi_on_centroids(i,j,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
+                }
+                fym *= bY(i,j,k,n);
+            }
+
+            Real fyp = bY(i,j+1,k,n)*(x(i,j+1,k,n)-x(i,j,k,n));
+            if ((apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0) or vfrc(i,j-1,k) != 1.0) {
+                Real xloc_on_yface = fcy(i,j+1,k,0);
+                if(needs_bdry_stencil) {
+                  fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                          xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps,
+                                                          on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                          on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+
+                } else {
+                  fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,x,phieb,flag,ccent,bcent,apx,apy,vfrc,
+                                                   xloc_on_yface,is_eb_dirichlet,is_eb_inhomog,vol_eps);
+                }
+                fyp *= bY(i,j+1,k,n);
+            }
+
+            Real vfrcinv = (1.0/kappa);
+
+            Real feb = 0.0;
+            if (is_eb_dirichlet and flag(i,j,k).isSingleValued()) {
+                Real dapx = apxm-apxp;
+                Real dapy = apym-apyp;
+                Real anorm = std::hypot(dapx,dapy);
+                Real anorminv = 1.0/anorm;
+                Real anrmx = dapx * anorminv;
+                Real anrmy = dapy * anorminv;
+
+                feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
+                                                         anrmx,anrmy,is_eb_inhomog, vol_eps,
+                                                         on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
+                                                         on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
+
+
+                feb *= ba(i,j,k) * beb(i,j,k,n);
+            }
+
+            gamma(i,j,k,n) = alpha*a(i,j,k) + vfrcinv *
+                (dhx*(apxm*fxm-apxp*fxp) +
+                 dhy*(apym*fym-apyp*fyp) -
+                 dhx*feb);
+        }
+    });
+
+    // Add update from small cell to update of large cell
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps) 
+        {
+            int ii,jj; 
+            Real apxm = apx(i  ,j  ,k);
+            Real apxp = apx(i+1,j  ,k);
+            Real apym = apy(i  ,j  ,k);
+            Real apyp = apy(i  ,j+1,k);
+            if (apxm > apxp and apxm > apym and apxm > apyp) {
+                ii = i-1;
+                jj = j  ;
+            } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                ii = i+1;
+                jj = j  ;
+            } else if (apym > apxm and apym > apxp and apym > apyp) {
+                ii = i  ;
+                jj = j-1;
+            } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                ii = i  ;
+                jj = j+1;
+            }
+
+            gamma(ii,jj,k,n) = (vfrc(i,j,k) * gamma(i,j,k,n) + vfrc(ii,jj,k) * gamma(ii,jj,k,n) ) /
+                           (vfrc(i,j,k) + vfrc(ii,jj,k));
+        }
+    }); // end of loop over box
+
+    // Call cell-centroid-centered slopes routines (in Src/EB) to define slope 
+    // and put values on original centroid
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps) 
+        {
+            int ii,jj; 
+            Real apxm = apx(i  ,j  ,k);
+            Real apxp = apx(i+1,j  ,k);
+            Real apym = apy(i  ,j  ,k);
+            Real apyp = apy(i  ,j+1,k);
+            if (apxm > apxp and apxm > apym and apxm > apyp) {
+                ii = i-1;
+                jj = j  ;
+            } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                ii = i+1;
+                jj = j  ;
+            } else if (apym > apxm and apym > apxp and apym > apyp) {
+                ii = i  ;
+                jj = j-1;
+            } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                ii = i  ;
+                jj = j+1;
+            }
+
+            // This version is hacked to not use the small-cell value
+            // TODO: we should generalize to include the ext-dir version as well
+            const auto& slopes_at_ii_jj =
+                amrex_calc_slopes_eb_special (ii, jj, k, n, gamma, ccent, flag, vfrc, vol_eps,
+                                             domlo_x, domlo_y, domhi_x, domhi_y);
+                
+            slopes(ii,jj,k,0) = slopes_at_ii_jj[0];
+            slopes(ii,jj,k,1) = slopes_at_ii_jj[1];
+        }
+    }); // end of loop over box
+
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (vfrc(i,j,k) > 0. and vfrc(i,j,k) < vol_eps) 
+        {
+            // Pick cell to merge into based on largest face area
+            //     and redefine the centroid of (ii,jj)
+            int ii, jj;
+            Real dx_small, dy_small;
+            Real dx_large, dy_large;
+            Real apxm = apx(i  ,j  ,k);
+            Real apxp = apx(i+1,j  ,k);
+            Real apym = apy(i  ,j  ,k);
+            Real apyp = apy(i  ,j+1,k);
+            if (apxm > apxp and apxm > apym and apxm > apyp) {
+                ii = i-1;
+                jj = j  ;
+                dx_small = ( 1.+ccent_orig( i, j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = (    ccent_orig( i, j,k,1)) - ccent(ii,jj,k,1);
+            } else if (apxp > apxm and apxp > apym and apxp > apyp) {
+                ii = i+1;
+                jj = j  ;
+                dx_small = (-1.+ccent_orig( i, j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = (    ccent_orig( i, j,k,1)) - ccent(ii,jj,k,1);
+            } else if (apym > apxm and apym > apxp and apym > apyp) {
+                ii = i  ;
+                jj = j-1;
+                dx_small = (    ccent_orig( i ,j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = ( 1.+ccent_orig( i ,j,k,1)) - ccent(ii,jj,k,1);
+            } else if (apyp > apxm and apyp > apxp and apyp > apym) {
+                ii = i  ;
+                jj = j+1;
+                dx_small = (    ccent_orig( i, j,k,0)) - ccent(ii,jj,k,0);
+                dy_small = (-1.+ccent_orig( i, j,k,1)) - ccent(ii,jj,k,1);
+            }
+
+                dx_large = (    ccent_orig(ii,jj,k,0)) - ccent(ii,jj,k,0);
+                dy_large = (    ccent_orig(ii,jj,k,1)) - ccent(ii,jj,k,1);
+
+           // Extrapolate to small cell centroid
+           gamma(i,j,k,n) = gamma(ii,jj,k,0) + dx_small * slopes(ii,jj,k,0)  
+                                     + dy_small * slopes(ii,jj,k,1);
+
+           // Extrapolate to large cell centroid
+           gamma(ii,jj,k,0) += dx_large * slopes(ii,jj,k,0) + dy_large * slopes(ii,jj,k,1);
+        }
+    }); // end of loop over box
+
+    // Set final phi values
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+         phi(i,j,k,n) /= gamma(i,j,k,n);
+    }); // end of loop over box
+
+    // We don't need to reset the centroids because "ccent" here was just a tempoeary
+
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void mlebabeclap_normalize (Box const& box, Array4<Real> const& phi,
                             Real alpha, Array4<Real const> const& a,
                             Real dhx, Real dhy,
@@ -1233,29 +1912,31 @@ void mlebabeclap_normalize (Box const& box, Array4<Real> const& phi,
                 Real anrmx = dapx * anorminv;
                 Real anrmy = dapy * anorminv;
 
-                Real bctx = bcent(i,j,k,0);
-                Real bcty = bcent(i,j,k,1);
-                Real dx_eb = get_dx_eb(vfrc(i,j,k));
+                if (!phi_on_centroid) {
+                   Real bctx = bcent(i,j,k,0);
+                   Real bcty = bcent(i,j,k,1);
+                   Real dx_eb = get_dx_eb(vfrc(i,j,k));
 
-                Real dg, gx, gy, sx, sy;
-                if (amrex::Math::abs(anrmx) > amrex::Math::abs(anrmy)) {
-                    dg = dx_eb / amrex::Math::abs(anrmx);
-                    gx = bctx - dg*anrmx;
-                    gy = bcty - dg*anrmy;
-                    sx = amrex::Math::copysign(1.0,anrmx);
-                    sy = amrex::Math::copysign(1.0,anrmy);
-                } else {
-                    dg = dx_eb / amrex::Math::abs(anrmy);
-                    gx = bctx - dg*anrmx;
-                    gy = bcty - dg*anrmy;
-                    sx = amrex::Math::copysign(1.0,anrmx);
-                    sy = amrex::Math::copysign(1.0,anrmy);
+                   Real dg, gx, gy, sx, sy;
+                   if (amrex::Math::abs(anrmx) > amrex::Math::abs(anrmy)) {
+                       dg = dx_eb / amrex::Math::abs(anrmx);
+                       gx = bctx - dg*anrmx;
+                       gy = bcty - dg*anrmy;
+                       sx = amrex::Math::copysign(1.0,anrmx);
+                       sy = amrex::Math::copysign(1.0,anrmy);
+                   } else {
+                       dg = dx_eb / amrex::Math::abs(anrmy);
+                       gx = bctx - dg*anrmx;
+                       gy = bcty - dg*anrmy;
+                       sx = amrex::Math::copysign(1.0,anrmx);
+                       sy = amrex::Math::copysign(1.0,anrmy);
+                   }
+
+                   Real phig_gamma = (1.0 + gx*sx + gy*sy + gx*gy*sx*sy);
+                   Real feb_gamma = -phig_gamma/dg * ba(i,j,k) * beb(i,j,k,n);
+                   gamma += vfrcinv*(-dhx)*feb_gamma;
                 }
-
-                Real phig_gamma = (1.0 + gx*sx + gy*sy + gx*gy*sx*sy);
-                Real feb_gamma = -phig_gamma/dg * ba(i,j,k) * beb(i,j,k,n);
-                gamma += vfrcinv*(-dhx)*feb_gamma;
-            }
+            }   
 
             phi(i,j,k,n) /= gamma;
         }

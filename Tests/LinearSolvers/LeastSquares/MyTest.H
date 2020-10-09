@@ -51,6 +51,7 @@ private:
     int max_iter = 100;
     int max_fmg_iter = 0;
     int max_bottom_iter = 1000;
+    amrex::Real abstol        = 0.0;
     amrex::Real reltol        = 1.e-12;
     amrex::Real bottom_reltol = 1.e-4;
     int linop_maxorder = 3;
@@ -74,6 +75,7 @@ private:
     amrex::Vector<std::unique_ptr<amrex::EBFArrayBoxFactory> > factory;
 
     amrex::Vector<amrex::MultiFab> phi;
+    amrex::Vector<amrex::MultiFab> phi_soln;
     amrex::Vector<amrex::MultiFab> phieb;
     amrex::Vector<amrex::MultiFab> grad_x;
     amrex::Vector<amrex::MultiFab> grad_x_analytic;
@@ -85,6 +87,7 @@ private:
     amrex::Vector<amrex::MultiFab> grad_eb_analytic;
     amrex::Vector<amrex::MultiFab> ccentr;
     amrex::Vector<amrex::MultiFab> rhs;
+    amrex::Vector<amrex::MultiFab> rhs_solve;
     amrex::Vector<amrex::MultiFab> acoef;
     amrex::Vector<amrex::Array<amrex::MultiFab,AMREX_SPACEDIM> > bcoef;
     amrex::Vector<amrex::MultiFab> bcoef_eb;
