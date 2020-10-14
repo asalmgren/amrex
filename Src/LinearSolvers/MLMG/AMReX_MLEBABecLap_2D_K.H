@@ -101,7 +101,9 @@ void mlebabeclap_adotx_centroid(
             //                (vfrc(i,j,k) + vfrc(ii,jj,k));
  
 
-            x(ii,jj,k,n) = interp_to_new_centroid(ii,jj,k,n,x_orig,phieb,flag,ccent_orig,ccent,bcent,vfrc,is_eb_inhomog,
+            amrex::Print() << "merging small cell " << IntVect(i,j) << "  into LARGE CELL " << IntVect(ii,jj) << std::endl;
+
+             x(ii,jj,k,n) = interp_to_new_centroid(ii,jj,k,n,x_orig,phieb,flag,ccent_orig,ccent,bcent,vfrc,is_eb_inhomog,
                                                   on_x_face, domlo_x, domhi_x, bcval_xlo, bcval_xhi,
                                                   on_y_face, domlo_y, domhi_y, bcval_ylo, bcval_yhi);
         }
@@ -138,6 +140,17 @@ void mlebabeclap_adotx_centroid(
             // First get EB-aware slope that doesn't know about extdir
             bool needs_bdry_stencil = (i <= domlo_x) or (i >= domhi_x) or
                                       (j <= domlo_y) or (j >= domhi_y);
+
+
+            bool this_cell = (false and i==2 and j==0);// or (i==9 and j==13);
+
+            if (this_cell) {
+                amrex::Print() << "\n  CELL:  " << i << "  " << j
+                               << "\n  needs_bdry_stencil  " << needs_bdry_stencil
+                               << "\n  is_eb_dirichlet     " << is_eb_dirichlet
+                               << "\n  is_eb_inhomog       " << is_eb_inhomog
+                               << std::endl;
+            }
 
             // phi_on_centroid is true here -- A second order least squares fit is used
             // to approximate the slope on the high and low faces. Note that if
@@ -235,6 +248,22 @@ void mlebabeclap_adotx_centroid(
 
             y(i,j,k,n) = 
                 (1.0/kappa) * (dhx*(apxm*fxm-apxp*fxp) + dhy*(apym*fym-apyp*fyp) - dhx*feb);
+
+
+            if (this_cell) {
+                amrex::Print() << "\n  kappa       " << kappa
+                               << "\n  dhx/y       " << dhx  << "  " << dhy
+                               << "\n  apxm / fxm  " << apxm << "  " << fxm
+                               << "\n  apxp / fxp  " << apxp << "  " << fxp
+                               << "\n  apym / fym  " << apym << "  " << fym
+                               << "\n  apyp / fyp  " << apyp << "  " << fyp
+                               << "\n  feb         " << feb
+                               << "\n  ba          " << ba(i,j,k)
+                               << "\n  beb         " << beb(i,j,k,n)
+                               << std::endl;
+            }
+
+
         }
     }); // end of loop over box
 
@@ -711,7 +740,7 @@ void mlebabeclap_gsrb_centroid (Box const& box,
 
                 if (flag(i,j,k).isRegular() and (
                    (flag(i-1,j  ,k).isRegular() and flag(i+1,j  ,k).isRegular() and
-                   flag(i  ,j-1,k).isRegular() and flag(i  ,j+1,k).isRegular()) ))
+                    flag(i  ,j-1,k).isRegular() and flag(i  ,j+1,k).isRegular()) ))
                 {
                     Real gamma = alpha*a(i,j,k)
                         + dhx * (bX(i+1,j,k,n) + bX(i,j,k,n))

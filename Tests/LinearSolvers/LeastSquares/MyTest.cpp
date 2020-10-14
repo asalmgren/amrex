@@ -94,7 +94,7 @@ MyTest::compute_gradient ()
         [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
         {
             ccentr_arr(i,j,k,n) = ccent(i,j,k,n);
-            phi_soln_arr(i,j,k,n) = phi_arr(i,j,k,n);
+            phi_soln_arr(i,j,k,n) = phi_arr(i,j,k,n) - 0.001;
             Real yloc_on_xface = fcx(i,j,k,0);
             Real xloc_on_yface = fcy(i,j,k,0);
             Real nx = norm(i,j,k,0);
