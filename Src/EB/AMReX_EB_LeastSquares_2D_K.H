@@ -1087,25 +1087,27 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
                 Real x_off = static_cast<Real>(ii-i);
                 Real y_off = static_cast<Real>(jj-j);
 
-                Real c_x_off(0.);
-                if (on_x_face and ii < domlo_x)
-                  c_x_off =  0.5;
-                else if (on_x_face and ii > domhi_x)
-                  c_x_off = -0.5;
+                if(on_x_face){
+                    if (ii < domlo_x and (vfrac(ii+1,jj,k) != 1.0 or vfrac(ii+2,jj,k) != 1.0) )
+                        continue;
+                    if (ii > domhi_x and (vfrac(ii-1,jj,k) != 1.0 or vfrac(ii-2,jj,k) != 1.0))
+                        continue;
+                }
 
-                Real c_y_off(0.);
-                if (on_y_face and jj < domlo_y)
-                  c_y_off =  0.5;
-                else if (on_y_face and jj > domhi_y)
-                  c_y_off = -0.5;
+                if(on_y_face){
+                    if (jj < domlo_y and (vfrac(ii,jj+1,k) != 1.0 or vfrac(ii,jj+2,k) != 1.0) )
+                        continue;
+                    if (jj > domhi_y and (vfrac(ii,jj-1,k) != 1.0 or vfrac(ii,jj-2,k) != 1.0) )
+                        continue;
+                }
 
                 if (flag(i,j,k).isConnected((ii-i),(jj-j),0))
                 {
                     // if (vfrac(ii,jj,k) > vol_eps)
                     {
                         Amatrix(a_ind,0) = 1.0;
-                        Amatrix(a_ind,1) = x_off + ccent_orig(ii,jj,k,0) - ccent_new(i,j,k,0) + c_x_off;
-                        Amatrix(a_ind,2) = y_off + ccent_orig(ii,jj,k,1) - ccent_new(i,j,k,1) + c_y_off;
+                        Amatrix(a_ind,1) = x_off + ccent_orig(ii,jj,k,0) - ccent_new(i,j,k,0);
+                        Amatrix(a_ind,2) = y_off + ccent_orig(ii,jj,k,1) - ccent_new(i,j,k,1);
                     }
                 }
 
@@ -1142,20 +1144,11 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
             for (int jj = j-1; jj <= j+1; jj++) // Normal to face
             if (!flag(ii,jj,k).isCovered())
             {
-
-                Real phi_val = phi(ii,jj,k,n);
-                if(on_x_face and ii < domlo_x )
-                    phi_val = bcval_xlo(ii,jj,k,n);
-                else if (on_x_face and ii > domhi_x)
-                    phi_val = bcval_xhi(ii,jj,k,n);
-                else if (on_y_face and jj < domlo_y)
-                    phi_val = bcval_ylo(ii,jj,k,n);
-                else if (on_y_face and jj > domhi_y)
-                    phi_val = bcval_yhi(ii,jj,k,n);
-
                 int irow  = (jj-(j-1)) + 3*(ii-(i-1));
                 AMREX_ASSERT(0<=irow and irow <9);
-                phi_vec(irow) = phi_val;
+
+                // A(a_ind,0) is 1 or 0. Use it to mask phi.
+                phi_vec(irow) = Amatrix(irow,0)*phi(ii,jj,k,n);
 
                 if (flag(ii,jj,k).isSingleValued() and is_eb_inhomog)
                     phi_vec(irow+9) = phieb(ii,jj,k,n);
@@ -1194,19 +1187,11 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
             for (int jj = j-1; jj <= j+1; jj++)
                 if (!flag(ii,jj,k).isCovered())
                 {
-
-                    Real phi_val = phi(ii,jj,k,n);
-                    if(on_x_face and ii < domlo_x )
-                        phi_val = bcval_xlo(ii,jj,k,n);
-                    else if (on_x_face and ii > domhi_x)
-                        phi_val = bcval_xhi(ii,jj,k,n);
-                    else if (on_y_face and jj < domlo_y)
-                        phi_val = bcval_ylo(ii,jj,k,n);
-                    else if (on_y_face and jj > domhi_y)
-                        phi_val = bcval_yhi(ii,jj,k,n);
-
                     int a_ind  = (jj-(j-1)) + 3*(ii-(i-1));
                     AMREX_ASSERT(0<=a_ind and a_ind <9);
+
+                    // A(a_ind,0) is 1 or 0. Use it to mask phi.
+                    Real phi_val = Amatrix(a_ind,0) * phi(ii,jj,k,n);
 
                     rhs(irow) += Amatrix(a_ind,irow) * phi_val;
                     if (flag(ii,jj,k).isSingleValued() and is_eb_inhomog)
