@@ -58,6 +58,9 @@ private:
     int max_coarsening_level = 30;
     bool use_hypre = false;
     bool use_petsc = false;
+    amrex::Vector<amrex::Real> solver_initial_offset = amrex::Vector<amrex::Real>(2,-0.001);
+
+    // For Poiseuille inputs
     bool use_poiseuille_1d = false;
     bool poiseuille_1d_askew = false;
     amrex::Vector<amrex::Real> poiseuille_1d_pt_on_top_wall = amrex::Vector<amrex::Real>(3,0.0);

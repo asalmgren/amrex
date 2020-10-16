@@ -33,3 +33,4 @@ max_bottom_iter = 1000
 reltol = 1e-5
 bottom_reltol = 1e-5
 abstol = 0.
+solver_initial_offset = 0.001  0.001

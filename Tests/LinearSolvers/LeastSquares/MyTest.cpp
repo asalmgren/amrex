@@ -61,7 +61,6 @@ MyTest::compute_gradient ()
     {
         const Box& bx = mfi.fabbox();
         Array4<const Real> const& phi_arr     = phi[ilev].array(mfi);
-        Array4<      Real> const& phi_soln_arr= phi_soln[ilev].array(mfi);
         Array4<const Real> const& phi_eb_arr  = phieb[ilev].array(mfi);
         Array4<      Real> const& grad_x_arr  = grad_x[ilev].array(mfi);
         Array4<      Real> const& grad_y_arr  = grad_y[ilev].array(mfi);
@@ -94,7 +93,6 @@ MyTest::compute_gradient ()
         [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
         {
             ccentr_arr(i,j,k,n) = ccent(i,j,k,n);
-            phi_soln_arr(i,j,k,n) = phi_arr(i,j,k,n) - 0.001;
             Real yloc_on_xface = fcx(i,j,k,0);
             Real xloc_on_yface = fcy(i,j,k,0);
             Real nx = norm(i,j,k,0);
@@ -382,18 +380,20 @@ MyTest::writePlotfile ()
 
     Vector<MultiFab> plotmf_analytic(max_level+1);
     for (int ilev = 0; ilev <= max_level; ++ilev) {
-        plotmf_analytic[ilev].define(grids[ilev],dmap[ilev],8,0);
+        plotmf_analytic[ilev].define(grids[ilev],dmap[ilev],10,0);
         MultiFab::Copy(plotmf_analytic[ilev], grad_x_analytic[ilev], 0, 0, 2, 0);
         MultiFab::Copy(plotmf_analytic[ilev], grad_y_analytic[ilev], 0, 2, 2, 0);
         MultiFab::Copy(plotmf_analytic[ilev], grad_eb_analytic[ilev], 0, 4, 2, 0);
         MultiFab::Copy(plotmf_analytic[ilev], lap_analytic[ilev], 0, 6, 2, 0);
+        MultiFab::Copy(plotmf_analytic[ilev], phi[ilev], 0, 8, 2, 0);
     }
     WriteMultiLevelPlotfile(plot_file_name + "-analytic", max_level+1,
                             amrex::GetVecOfConstPtrs(plotmf_analytic),
                             {"dudx", "dvdx",
                              "dudy","dvdy",
                              "dudn","dvdn",
-                             "lapu","lapv"},
+                             "lapu","lapv",
+                             "u_soln","v_soln"},
                             geom, 0.0, Vector<int>(max_level+1,0),
                             Vector<IntVect>(max_level,IntVect{2}));
 #else
@@ -507,6 +507,7 @@ MyTest::readParameters ()
     pp.query("poiseuille_1d_height_dir", poiseuille_1d_height_dir);
     pp.query("poiseuille_1d_bottom", poiseuille_1d_bottom);
     pp.query("poiseuille_1d_no_flow_dir", poiseuille_1d_no_flow_dir);
+    pp.queryarr("solver_initial_offset", solver_initial_offset);
 }
 
 void

@@ -16,6 +16,7 @@ void MyTest::initializePoiseuilleDataFor2D(int ilev) {
     Array4<Real> const &fab_eb = grad_eb_analytic[ilev].array(mfi);
     Array4<Real> const &fab_lap = lap_analytic[ilev].array(mfi);
     Array4<Real> const &fab_rhs_solve = rhs_solve[ilev].array(mfi);
+    Array4<Real> const &fab_phi_soln = phi_soln[ilev].array(mfi);
 
     const FabArray<EBCellFlagFab> *flags =
         &(factory[ilev]->getMultiEBCellFlagFab());
@@ -131,6 +132,10 @@ void MyTest::initializePoiseuilleDataFor2D(int ilev) {
         fab_eb(i, j, k, 0) = dudx * norm(i, j, k, 0) + dudy * norm(i, j, k, 1);
         fab_eb(i, j, k, 1) = dvdx * norm(i, j, k, 0) + dvdy * norm(i, j, k, 1);
       }
+
+      fab_phi_soln(i, j, k, 0) = fab(i, j, k, 0) + solver_initial_offset[0];
+      fab_phi_soln(i, j, k, 1) = fab(i, j, k, 1) + solver_initial_offset[1];
+
     });
   }
 }
