@@ -335,6 +335,13 @@ MyTest::solve ()
        }
 
        MLMG mlmg_solve(mleb);
+
+      if(bottom_solver_type == "smoother")
+      {
+        amrex::Print() << "Setting bottomSolver to smoother\n";
+        mlmg_solve.setBottomSolver(MLMG::BottomSolver::smoother);
+      }
+
        mlmg_solve.setVerbose(verbose);
        mlmg_solve.setBottomVerbose(bottom_verbose);
        mlmg_solve.solve(amrex::GetVecOfPtrs(phi_soln_comp), 
@@ -482,6 +489,7 @@ MyTest::readParameters ()
     pp.queryarr("scalars", scalars);
 
     pp.query("verbose", verbose);
+    pp.query("bottom_solver", bottom_solver_type);
     pp.query("bottom_verbose", bottom_verbose);
     pp.query("max_iter", max_iter);
     pp.query("max_fmg_iter", max_fmg_iter);

@@ -47,6 +47,7 @@ private:
 
     // For MLMG solver
     int verbose = 2;
+    std::string bottom_solver_type = "bicgstab";
     int bottom_verbose = 2;
     int max_iter = 100;
     int max_fmg_iter = 0;

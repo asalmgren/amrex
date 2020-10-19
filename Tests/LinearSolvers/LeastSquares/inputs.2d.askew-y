@@ -27,6 +27,8 @@ poiseuille_1d_rotation = 60.
 plot_file = "plot-askew-y"
 
 verbose        = 25
+
+bottom_solver=smoother
 bottom_verbose = 10
 max_iter = 1000
 max_bottom_iter = 1000
