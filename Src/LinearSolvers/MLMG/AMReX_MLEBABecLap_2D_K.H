@@ -841,7 +841,7 @@ void mlebabeclap_gsrb_centroid (Box const& box,
                            fyp = grad_y_of_phi_on_centroids(i,j+1,k,n,phi,phieb,flag,ccent,bcent,apx,apy,vfrc,
                                                             xloc_on_yface,is_eb_dirichlet,treat_eb_as_inhomog,vol_eps);
                         }
-                        fyp *= bX(i,j+1,k,n);
+                        fyp *= bY(i,j+1,k,n);
                         oyp = 0.0;
                     }
 
