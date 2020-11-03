@@ -60,7 +60,7 @@ MyTest::compute_gradient ()
     for (MFIter mfi(rhs[ilev]); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.fabbox();
-        Array4<const Real> const& phi_arr     = phi[ilev].array(mfi);
+        Array4<const Real> const& phi_arr     = phi_ghost_resolved[ilev].array(mfi);
         Array4<const Real> const& phi_eb_arr  = phieb[ilev].array(mfi);
         Array4<      Real> const& grad_x_arr  = grad_x[ilev].array(mfi);
         Array4<      Real> const& grad_y_arr  = grad_y[ilev].array(mfi);
