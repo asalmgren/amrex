@@ -772,7 +772,7 @@ void mlebabeclap_gsrb_centroid (Box const& box,
                     Real fxm = -bX(i,j,k,n)*(phi(i-1,j,k,n)-phi(i,j,k,n));
                     Real oxm = -bX(i,j,k,n)*cf0;
                     Real sxm =  bX(i,j,k,n);
-                    if ((apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
+                    if ((apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) ) {
                         Real yloc_on_xface = fcx(i,j,k,0);
                         if(needs_bdry_stencil) {
                            fxm = grad_x_of_phi_on_centroids_extdir(i,j,k,n,phi,phieb,
@@ -791,7 +791,7 @@ void mlebabeclap_gsrb_centroid (Box const& box,
                     Real fxp =  bX(i+1,j,k,n)*(phi(i+1,j,k,n)-phi(i,j,k,n));
                     Real oxp =  bX(i+1,j,k,n)*cf2;
                     Real sxp = -bX(i+1,j,k,n);
-                    if ((apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) ) {
+                    if ((apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
                         Real yloc_on_xface = fcx(i+1,j,k,0);
                         if(needs_bdry_stencil) {
                            fxp = grad_x_of_phi_on_centroids_extdir(i+1,j,k,n,phi,phieb,
@@ -810,7 +810,7 @@ void mlebabeclap_gsrb_centroid (Box const& box,
                     Real fym = -bY(i,j,k,n)*(phi(i,j-1,k,n)-phi(i,j,k,n));
                     Real oym = -bY(i,j,k,n)*cf1;
                     Real sym =  bY(i,j,k,n);
-                    if ((apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
+                    if ((apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0) or vfrc(i,j+1,k) != 1.0) {
                         Real xloc_on_yface = fcy(i,j,k,0);
                         if(needs_bdry_stencil) {
                            fym = grad_y_of_phi_on_centroids_extdir(i,j,k,n,phi,phieb,
@@ -829,7 +829,7 @@ void mlebabeclap_gsrb_centroid (Box const& box,
                     Real fyp =  bY(i,j+1,k,n)*(phi(i,j+1,k,n)-phi(i,j,k,n));
                     Real oyp =  bY(i,j+1,k,n)*cf3;
                     Real syp = -bY(i,j+1,k,n);
-                    if ((apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0) ) {
+                    if ((apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0) or vfrc(i,j-1,k) != 1.0) {
                         Real xloc_on_yface = fcy(i,j+1,k,0);
                         if(needs_bdry_stencil) {
                            fyp = grad_y_of_phi_on_centroids_extdir(i,j+1,k,n,phi,phieb,flag,
