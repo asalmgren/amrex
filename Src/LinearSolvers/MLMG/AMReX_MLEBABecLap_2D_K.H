@@ -874,7 +874,7 @@ void mlebabeclap_gsrb_centroid (Box const& box,
                         rho += -vfrcinv*(-dhx)*feb;
                     }
 
-                    Real res = rhs(i,j,k,n) - rho;
+                    Real res = rhs(i,j,k,n) + rho;
                     phi(i,j,k,n) += res / cc0(i,j,k,n);
                 }
             }
