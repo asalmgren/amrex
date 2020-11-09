@@ -142,8 +142,14 @@ void MyTest::initializePoiseuilleDataFor2D(int ilev) {
 
       // add offset for initial guess on cells that are not ghost cells
       if(i >= dlo[0] and i <= dhi[0] and j >= dlo[1] and j <= dhi[1]) {
-         fab_phi_soln(i, j, k, 0) = fab(i, j, k, 0) + solver_initial_offset[0];
-         fab_phi_soln(i, j, k, 1) = fab(i, j, k, 1) + solver_initial_offset[1];
+         if(solver_set_initial_offset) {
+            fab_phi_soln(i, j, k, 0) = fab(i, j, k, 0) + solver_initial_offset[0];
+            fab_phi_soln(i, j, k, 1) = fab(i, j, k, 1) + solver_initial_offset[1];
+         }
+         else {
+            fab_phi_soln(i, j, k, 0) = 0.0;
+            fab_phi_soln(i, j, k, 1) = 0.0;
+         }
       }
       else {
          fab_phi_soln(i, j, k, 0) = fab(i, j, k, 0);

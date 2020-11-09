@@ -516,6 +516,7 @@ MyTest::readParameters ()
     pp.query("poiseuille_1d_bottom", poiseuille_1d_bottom);
     pp.query("poiseuille_1d_no_flow_dir", poiseuille_1d_no_flow_dir);
     pp.queryarr("solver_initial_offset", solver_initial_offset);
+    pp.query("solver_set_initial_offset", solver_set_initial_offset);
 }
 
 void
