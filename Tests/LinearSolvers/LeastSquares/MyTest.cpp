@@ -344,6 +344,8 @@ MyTest::solve ()
 
        mlmg_solve.setVerbose(verbose);
        mlmg_solve.setBottomVerbose(bottom_verbose);
+       mlmg_solve.setMaxIter(max_iter);
+       mlmg_solve.setBottomMaxIter(max_bottom_iter);
        mlmg_solve.solve(amrex::GetVecOfPtrs(phi_soln_comp), 
                   amrex::GetVecOfConstPtrs(rhs_solve_comp),
                   reltol, abstol);
