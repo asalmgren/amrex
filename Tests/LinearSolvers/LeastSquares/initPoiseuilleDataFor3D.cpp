@@ -11,6 +11,7 @@ void MyTest::initializePoiseuilleDataFor3D(int ilev) {
   for (MFIter mfi(phi[ilev]); mfi.isValid(); ++mfi) {
     const Box &bx = mfi.fabbox();
     Array4<Real> const &fab = phi[ilev].array(mfi);
+    Array4<Real> const &fab_ghost_resolved = phi_ghost_resolved[ilev].array(mfi);
     Array4<Real> const &fab_gx = grad_x_analytic[ilev].array(mfi);
     Array4<Real> const &fab_gy = grad_y_analytic[ilev].array(mfi);
     Array4<Real> const &fab_gz = grad_z_analytic[ilev].array(mfi);
@@ -255,6 +256,10 @@ void MyTest::initializePoiseuilleDataFor3D(int ilev) {
                                dwdy * norm(i, j, k, 1) +
                                dwdz * norm(i, j, k, 2);
         }
+
+        fab_ghost_resolved(i, j, k, 0) = fab(i, j, k, 0);
+        fab_ghost_resolved(i, j, k, 1) = fab(i, j, k, 1);
+        fab_ghost_resolved(i, j, k, 2) = fab(i, j, k, 2);
       });
     } else { // 3D grid-aligned
       amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j,
@@ -368,6 +373,9 @@ void MyTest::initializePoiseuilleDataFor3D(int ilev) {
         } else {
           AMREX_ALWAYS_ASSERT_WITH_MESSAGE(0, "Invalid height direction");
         }
+        fab_ghost_resolved(i, j, k, 0) = fab(i, j, k, 0);
+        fab_ghost_resolved(i, j, k, 1) = fab(i, j, k, 1);
+        fab_ghost_resolved(i, j, k, 2) = fab(i, j, k, 2);
       });
     }
   }

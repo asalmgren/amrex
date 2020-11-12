@@ -334,6 +334,7 @@ MyTest::solve ()
          MultiFab::Copy(coeff0_comp[ilev],*mleb.getCoeff0(ilev,0),0,0,1,0);
        }
 
+#if (AMREX_SPACEDIM == 2)
        MLMG mlmg_solve(mleb);
 
       if(bottom_solver_type == "smoother")
@@ -349,6 +350,7 @@ MyTest::solve ()
        mlmg_solve.solve(amrex::GetVecOfPtrs(phi_soln_comp), 
                   amrex::GetVecOfConstPtrs(rhs_solve_comp),
                   reltol, abstol);
+#endif
     }
 }
 

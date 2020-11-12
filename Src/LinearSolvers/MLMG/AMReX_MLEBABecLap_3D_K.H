@@ -6,18 +6,21 @@
 namespace amrex {
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
-                        Array4<Real const> const& x, Array4<Real const> const& a,
+void mlebabeclap_adotx_centroid (Box const& box, Array4<Real> const& y,
+                        Array4<Real const> const& x_orig, Array4<Real const> const& a,
                         Array4<Real const> const& bX, Array4<Real const> const& bY,
-                        Array4<Real const> const& bZ, Array4<const int> const& ccm,
+                        Array4<Real const> const& bZ,
                         Array4<EBCellFlag const> const& flag,
                         Array4<Real const> const& vfrc, Array4<Real const> const& apx,
                         Array4<Real const> const& apy, Array4<Real const> const& apz,
                         Array4<Real const> const& fcx, Array4<Real const> const& fcy,
                         Array4<Real const> const& fcz,
-                        Array4<Real const> const& ccent, Array4<Real const> const& ba,
+                        Array4<Real const> const& ccent_orig, Array4<Real const> const& ba,
                         Array4<Real const> const& bcent, Array4<Real const> const& beb,
                         Array4<Real const> const& phieb,
+                        Array4<Real> const& x,
+                        Array4<Real> const& ccent,
+                        Array4<Real      > const& slopes,
                         Array4<Real const> const& bcval_xlo, Array4<Real const> const& bcval_ylo,
                         Array4<Real const> const& bcval_zlo,
                         Array4<Real const> const& bcval_xhi, Array4<Real const> const& bcval_yhi,
@@ -27,18 +30,26 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                         const bool& on_x_face, const bool& on_y_face, const bool& on_z_face,
                         bool is_eb_dirichlet, bool is_eb_inhomog,
                         GpuArray<Real,AMREX_SPACEDIM> const& dxinv,
-                        Real alpha, Real beta, int ncomp,
-                        bool beta_on_centroid, bool phi_on_centroid) noexcept
+                        Real alpha, Real beta, int ncomp) noexcept
 {
+    //TOD0: Implement cell merging
     // We define (vfrc < vol_eps) as the trigger for a cell to be merged
-    constexpr Real vol_eps = 1.e-2;
+    constexpr Real vol_eps = 0.0;
+
+    // First copy x_orig into x and ccent_orig into ccent
+    Box gbx(amrex::grow(box,1));
+    amrex::Loop(gbx, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        //amrex::Print() << "(" << i << "," << j << "," << k << ")" << std::endl;
+        ccent(i,j,k,0) = ccent_orig(i,j,k,0);
+        ccent(i,j,k,1) = ccent_orig(i,j,k,1);
+        ccent(i,j,k,2) = ccent_orig(i,j,k,2);
+            x(i,j,k,n) =     x_orig(i,j,k,n);
+    }); // end of loop over box
 
     Real dhx = beta*dxinv[0]*dxinv[0];
     Real dhy = beta*dxinv[1]*dxinv[1];
     Real dhz = beta*dxinv[2]*dxinv[2];
-
-    bool beta_on_center = !(beta_on_centroid);
-    bool  phi_on_center = !( phi_on_centroid);
 
     amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
     {
@@ -46,7 +57,7 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
         {
             y(i,j,k,n) = 0.0;
         }
-        else if (flag(i,j,k).isRegular() and (phi_on_center or
+        else if (flag(i,j,k).isRegular() and (
                  (flag(i-1,j  ,k  ).isRegular() and flag(i+1,j  ,k  ).isRegular() and
                   flag(i  ,j-1,k  ).isRegular() and flag(i  ,j+1,k  ).isRegular() and
                   flag(i  ,j  ,k-1).isRegular() and flag(i  ,j  ,k+1).isRegular()) ))
@@ -75,28 +86,7 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                                       (k <= domlo_z) or (k >= domhi_z);
 
             Real fxm = bX(i,j,k,n)*(x(i,j,k,n) - x(i-1,j,k,n));
-            if (phi_on_center and apxm != 0.0 and apxm != 1.0) {
-                int jj = j + static_cast<int>(amrex::Math::copysign(1.0, fcx(i,j,k,0)));
-                int kk = k + static_cast<int>(amrex::Math::copysign(1.0, fcx(i,j,k,1)));
-                Real fracy = (ccm(i-1,jj,k) || ccm(i,jj,k)) ? amrex::Math::abs(fcx(i,j,k,0)) : 0.0;
-                Real fracz = (ccm(i-1,j,kk) || ccm(i,j,kk)) ? amrex::Math::abs(fcx(i,j,k,1)) : 0.0;
-                if (beta_on_center)
-                {
-                    fxm = (1.0-fracy)*(1.0-fracz)*fxm +
-                        fracy*(1.0-fracz)*bX(i,jj,k ,n)*(x(i,jj,k ,n)-x(i-1,jj,k ,n)) +
-                        fracz*(1.0-fracy)*bX(i,j ,kk,n)*(x(i,j ,kk,n)-x(i-1,j ,kk,n)) +
-                        fracy*     fracz *bX(i,jj,kk,n)*(x(i,jj,kk,n)-x(i-1,jj,kk,n));
-                }
-                else if (beta_on_centroid)
-                {
-                    fxm = (1.0-fracy)*(1.0-fracz)*(x(i, j, k,n)-x(i-1, j, k,n)) +
-                               fracy *(1.0-fracz)*(x(i,jj, k,n)-x(i-1,jj, k,n)) +
-                               fracz *(1.0-fracy)*(x(i, j,kk,n)-x(i-1, j,kk,n)) +
-                               fracy *     fracz *(x(i,jj,kk,n)-x(i-1,jj,kk,n));
-                    fxm *= bX(i,j,k,n);
-                }
-            } else if ( phi_on_centroid and
-                       (apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) ) {
+            if ((apxm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0) ) {
                 Real yloc_on_xface = fcx(i,j,k,0);
                 Real zloc_on_xface = fcx(i,j,k,1);
 
@@ -116,28 +106,7 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
             }
 
             Real fxp = bX(i+1,j,k,n)*(x(i+1,j,k,n) - x(i,j,k,n));
-            if (phi_on_center and apxp != 0.0 and apxp != 1.0) {
-                int jj = j + static_cast<int>(amrex::Math::copysign(1.0,fcx(i+1,j,k,0)));
-                int kk = k + static_cast<int>(amrex::Math::copysign(1.0,fcx(i+1,j,k,1)));
-                Real fracy = (ccm(i,jj,k) || ccm(i+1,jj,k)) ? amrex::Math::abs(fcx(i+1,j,k,0)) : 0.0;
-                Real fracz = (ccm(i,j,kk) || ccm(i+1,j,kk)) ? amrex::Math::abs(fcx(i+1,j,k,1)) : 0.0;
-                if (beta_on_center)
-                {
-                    fxp = (1.0-fracy)*(1.0-fracz)*fxp +
-                        fracy*(1.0-fracz)*bX(i+1,jj,k ,n)*(x(i+1,jj,k ,n)-x(i,jj,k ,n)) +
-                        fracz*(1.0-fracy)*bX(i+1,j ,kk,n)*(x(i+1,j ,kk,n)-x(i,j ,kk,n)) +
-                        fracy*     fracz *bX(i+1,jj,kk,n)*(x(i+1,jj,kk,n)-x(i,jj,kk,n));
-                }
-                else if (beta_on_centroid)
-                {
-                    fxp = (1.0-fracy)*(1.0-fracz)*(x(i+1, j, k,n)-x(i, j, k,n)) +
-                               fracy *(1.0-fracz)*(x(i+1,jj, k,n)-x(i,jj, k,n)) +
-                               fracz *(1.0-fracy)*(x(i+1, j,kk,n)-x(i, j,kk,n)) +
-                               fracy *     fracz *(x(i+1,jj,kk,n)-x(i,jj,kk,n));
-                    fxp *= bX(i+1,j,k,n);
-                }
-            } else if ( phi_on_centroid and
-                       (apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
+            if ((apxp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i+1,j,k) != 1.0 or vfrc(i-1,j,k) != 1.0) ) {
                 Real yloc_on_xface = fcx(i+1,j,k,0);
                 Real zloc_on_xface = fcx(i+1,j,k,1);
 
@@ -157,29 +126,7 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
             }
 
             Real fym = bY(i,j,k,n)*(x(i,j,k,n) - x(i,j-1,k,n));
-            if (phi_on_center and apym != 0.0 and apym != 1.0) {
-                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j,k,0)));
-                int kk = k + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j,k,1)));
-                Real fracx = (ccm(ii,j-1,k) || ccm(ii,j,k)) ? amrex::Math::abs(fcy(i,j,k,0)) : 0.0;
-                Real fracz = (ccm(i,j-1,kk) || ccm(i,j,kk)) ? amrex::Math::abs(fcy(i,j,k,1)) : 0.0;
-                if (beta_on_center)
-                {
-                    fym = (1.0-fracx)*(1.0-fracz)*fym +
-                        fracx*(1.0-fracz)*bY(ii,j,k ,n)*(x(ii,j,k ,n)-x(ii,j-1,k ,n)) +
-                        fracz*(1.0-fracx)*bY(i ,j,kk,n)*(x(i ,j,kk,n)-x(i ,j-1,kk,n)) +
-                        fracx*     fracz *bY(ii,j,kk,n)*(x(ii,j,kk,n)-x(ii,j-1,kk,n));
-                }
-                else if (beta_on_centroid)
-                {
-                    fym = (1.0-fracx)*(1.0-fracz)*(x( i,j, k,n)-x( i,j-1, k,n)) +
-                               fracx *(1.0-fracz)*(x(ii,j, k,n)-x(ii,j-1, k,n)) +
-                               fracz *(1.0-fracx)*(x(i ,j,kk,n)-x( i,j-1,kk,n)) +
-                               fracx *     fracz *(x(ii,j,kk,n)-x(ii,j-1,kk,n));
-                    fym *= bY(i,j,k,n);
-
-                }
-            } else if ( phi_on_centroid and
-                       (apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0 or vfrc(i,j+1,k) != 1.0) ) {
+            if ( (apym != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j-1,k) != 1.0 or vfrc(i,j+1,k) != 1.0) ) {
                 Real xloc_on_yface = fcy(i,j,k,0);
                 Real zloc_on_yface = fcy(i,j,k,1);
 
@@ -199,29 +146,7 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
             }
 
             Real fyp = bY(i,j+1,k,n)*(x(i,j+1,k,n) - x(i,j,k,n));
-            if (phi_on_center and apyp != 0.0 and apyp != 1.0) {
-                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j+1,k,0)));
-                int kk = k + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j+1,k,1)));
-                Real fracx = (ccm(ii,j,k) || ccm(ii,j+1,k)) ? amrex::Math::abs(fcy(i,j+1,k,0)) : 0.0;
-                Real fracz = (ccm(i,j,kk) || ccm(i,j+1,kk)) ? amrex::Math::abs(fcy(i,j+1,k,1)) : 0.0;
-                if (beta_on_center)
-                {
-                    fyp = (1.0-fracx)*(1.0-fracz)*fyp +
-                        fracx*(1.0-fracz)*bY(ii,j+1,k ,n)*(x(ii,j+1,k ,n)-x(ii,j,k ,n)) +
-                        fracz*(1.0-fracx)*bY(i ,j+1,kk,n)*(x(i ,j+1,kk,n)-x(i ,j,kk,n)) +
-                        fracx*     fracz *bY(ii,j+1,kk,n)*(x(ii,j+1,kk,n)-x(ii,j,kk,n));
-                }
-                else if (beta_on_centroid)
-                {
-                    fyp = (1.0-fracx)*(1.0-fracz)*(x( i,j+1, k,n)-x( i,j, k,n)) +
-                               fracx *(1.0-fracz)*(x(ii,j+1, k,n)-x(ii,j, k,n)) +
-                               fracz *(1.0-fracx)*(x( i,j+1,kk,n)-x( i,j,kk,n)) +
-                               fracx *     fracz *(x(ii,j+1,kk,n)-x(ii,j,kk,n));
-                    fyp *= bY(i,j+1,k,n);
-
-                }
-            } else if ( phi_on_centroid and
-                       (apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
+            if ( (apyp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j+1,k) != 1.0 or vfrc(i,j-1,k) != 1.0) ) {
                 Real xloc_on_yface = fcy(i,j+1,k,0);
                 Real zloc_on_yface = fcy(i,j+1,k,1);
 
@@ -241,29 +166,7 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
             }
 
             Real fzm = bZ(i,j,k,n)*(x(i,j,k,n) - x(i,j,k-1,n));
-            if (phi_on_center and apzm != 0.0 and apzm != 1.0) {
-                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k,0)));
-                int jj = j + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k,1)));
-                Real fracx = (ccm(ii,j,k-1) || ccm(ii,j,k)) ? amrex::Math::abs(fcz(i,j,k,0)) : 0.0;
-                Real fracy = (ccm(i,jj,k-1) || ccm(i,jj,k)) ? amrex::Math::abs(fcz(i,j,k,1)) : 0.0;
-                if (beta_on_center)
-                {
-                    fzm = (1.0-fracx)*(1.0-fracy)*fzm +
-                        fracx*(1.0-fracy)*bZ(ii,j ,k,n)*(x(ii,j ,k,n)-x(ii,j ,k-1,n)) +
-                        fracy*(1.0-fracx)*bZ(i ,jj,k,n)*(x(i ,jj,k,n)-x(i ,jj,k-1,n)) +
-                        fracx*     fracy *bZ(ii,jj,k,n)*(x(ii,jj,k,n)-x(ii,jj,k-1,n));
-                }
-                else if (beta_on_centroid)
-                {
-                    fzm = (1.0-fracx)*(1.0-fracy)*(x( i, j,k,n)-x( i, j,k-1,n)) +
-                               fracx *(1.0-fracy)*(x(ii, j,k,n)-x(ii, j,k-1,n)) +
-                               fracy *(1.0-fracx)*(x( i,jj,k,n)-x( i,jj,k-1,n)) +
-                               fracx *     fracy *(x(ii,jj,k,n)-x(ii,jj,k-1,n));
-                    fzm *= bZ(i,j,k,n);
-
-                }
-            } else if ( phi_on_centroid and
-                       (apzm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j,k-1) != 1.0 or vfrc(i,j,k+1) != 1.0) ) {
+            if ( (apzm != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j,k-1) != 1.0 or vfrc(i,j,k+1) != 1.0) ) {
                 Real xloc_on_zface = fcz(i,j,k,0);
                 Real yloc_on_zface = fcz(i,j,k,1);
 
@@ -283,29 +186,7 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
             }
 
             Real fzp = bZ(i,j,k+1,n)*(x(i,j,k+1,n) - x(i,j,k,n));
-            if (phi_on_center and apzp != 0.0 and apzp != 1.0) {
-                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k+1,0)));
-                int jj = j + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k+1,1)));
-                Real fracx = (ccm(ii,j,k) || ccm(ii,j,k+1)) ? amrex::Math::abs(fcz(i,j,k+1,0)) : 0.0;
-                Real fracy = (ccm(i,jj,k) || ccm(i,jj,k+1)) ? amrex::Math::abs(fcz(i,j,k+1,1)) : 0.0;
-                if (beta_on_center)
-                {
-                    fzp = (1.0-fracx)*(1.0-fracy)*fzp +
-                        fracx*(1.0-fracy)*bZ(ii,j ,k+1,n)*(x(ii,j ,k+1,n)-x(ii,j ,k,n)) +
-                        fracy*(1.0-fracx)*bZ(i ,jj,k+1,n)*(x(i ,jj,k+1,n)-x(i ,jj,k,n)) +
-                        fracx*     fracy *bZ(ii,jj,k+1,n)*(x(ii,jj,k+1,n)-x(ii,jj,k,n));
-                }
-                else if (beta_on_centroid)
-                {
-                    fzp = (1.0-fracx)*(1.0-fracy)*(x( i, j,k+1,n)-x( i, j,k,n)) +
-                               fracx *(1.0-fracy)*(x(ii, j,k+1,n)-x(ii, j,k,n)) +
-                               fracy *(1.0-fracx)*(x( i,jj,k+1,n)-x( i,jj,k,n)) +
-                               fracx *     fracy *(x(ii,jj,k+1,n)-x(ii,jj,k,n));
-                    fzp *= bZ(i,j,k+1,n);
-
-                }
-            } else if ( phi_on_centroid and
-                       (apzp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j,k+1) != 1.0  or vfrc(i,j,k-1) != 1.0) ) {
+            if ( (apzp != 0.0) and (vfrc(i,j,k) != 1.0 or vfrc(i,j,k+1) != 1.0  or vfrc(i,j,k-1) != 1.0) ) {
                 Real xloc_on_zface = fcz(i,j,k+1,0);
                 Real yloc_on_zface = fcz(i,j,k+1,1);
 
@@ -335,55 +216,268 @@ void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
                 Real anrmy = dapy * anorminv;
                 Real anrmz = dapz * anorminv;
 
-                if (!phi_on_centroid)
+                feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
+                                                         anrmx,anrmy,anrmz,is_eb_inhomog,vol_eps,
+                                                         on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
+                                                         on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
+                                                         on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
+                feb *= ba(i,j,k) * beb(i,j,k,n);
+            }
+
+            y(i,j,k,n) = alpha*a(i,j,k)*x(i,j,k,n) + (1.0/kappa) *
+                (dhx*(apxm*fxm - apxp*fxp) +
+                 dhy*(apym*fym - apyp*fyp) +
+                 dhz*(apzm*fzm - apzp*fzp) - dhx*feb);
+        }
+    });
+
+    // We don't need to reset the centroids because "ccent" here was just a tempoeary
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void mlebabeclap_adotx (Box const& box, Array4<Real> const& y,
+                        Array4<Real const> const& x, Array4<Real const> const& a,
+                        Array4<Real const> const& bX, Array4<Real const> const& bY,
+                        Array4<Real const> const& bZ, Array4<const int> const& ccm,
+                        Array4<EBCellFlag const> const& flag,
+                        Array4<Real const> const& vfrc, Array4<Real const> const& apx,
+                        Array4<Real const> const& apy, Array4<Real const> const& apz,
+                        Array4<Real const> const& fcx, Array4<Real const> const& fcy,
+                        Array4<Real const> const& fcz,
+                        Array4<Real const> const& ba,
+                        Array4<Real const> const& bcent, Array4<Real const> const& beb,
+                        Array4<Real const> const& phieb,
+                        bool is_eb_dirichlet, bool is_eb_inhomog,
+                        GpuArray<Real,AMREX_SPACEDIM> const& dxinv,
+                        Real alpha, Real beta, int ncomp,
+                        bool beta_on_centroid) noexcept
+{
+    // We define (vfrc < vol_eps) as the trigger for a cell to be merged
+    constexpr Real vol_eps = 1.e-2;
+
+    Real dhx = beta*dxinv[0]*dxinv[0];
+    Real dhy = beta*dxinv[1]*dxinv[1];
+    Real dhz = beta*dxinv[2]*dxinv[2];
+
+    bool beta_on_center = !(beta_on_centroid);
+
+    amrex::Loop(box, ncomp, [=] (int i, int j, int k, int n) noexcept
+    {
+        if (flag(i,j,k).isCovered())
+        {
+            y(i,j,k,n) = 0.0;
+        }
+        else if (flag(i,j,k).isRegular())
+        {
+            y(i,j,k,n) = alpha*a(i,j,k)*x(i,j,k,n)
+                - dhx * (bX(i+1,j,k,n)*(x(i+1,j,k,n) - x(i  ,j,k,n))
+                        -bX(i  ,j,k,n)*(x(i  ,j,k,n) - x(i-1,j,k,n)))
+                - dhy * (bY(i,j+1,k,n)*(x(i,j+1,k,n) - x(i,j  ,k,n))
+                        -bY(i,j  ,k,n)*(x(i,j  ,k,n) - x(i,j-1,k,n)))
+                - dhz * (bZ(i,j,k+1,n)*(x(i,j,k+1,n) - x(i,j,k  ,n))
+                        -bZ(i,j,k  ,n)*(x(i,j,k  ,n) - x(i,j,k-1,n)));
+        }
+        else
+        {
+            Real kappa = vfrc(i,j,k);
+            Real apxm = apx(i,j,k);
+            Real apxp = apx(i+1,j,k);
+            Real apym = apy(i,j,k);
+            Real apyp = apy(i,j+1,k);
+            Real apzm = apz(i,j,k);
+            Real apzp = apz(i,j,k+1);
+
+            Real fxm = bX(i,j,k,n)*(x(i,j,k,n) - x(i-1,j,k,n));
+            if (apxm != 0.0 and apxm != 1.0) {
+                int jj = j + static_cast<int>(amrex::Math::copysign(1.0, fcx(i,j,k,0)));
+                int kk = k + static_cast<int>(amrex::Math::copysign(1.0, fcx(i,j,k,1)));
+                Real fracy = (ccm(i-1,jj,k) || ccm(i,jj,k)) ? amrex::Math::abs(fcx(i,j,k,0)) : 0.0;
+                Real fracz = (ccm(i-1,j,kk) || ccm(i,j,kk)) ? amrex::Math::abs(fcx(i,j,k,1)) : 0.0;
+                if (beta_on_center)
                 {
-                    Real phib = is_eb_inhomog ? phieb(i,j,k,n) : 0.0;
-
-                    Real bctx = bcent(i,j,k,0);
-                    Real bcty = bcent(i,j,k,1);
-                    Real bctz = bcent(i,j,k,2);
-                    Real dx_eb = get_dx_eb(kappa);
-
-                    Real dg = dx_eb / amrex::max(amrex::Math::abs(anrmx), amrex::Math::abs(anrmy),
-                                                 amrex::Math::abs(anrmz));
-                    Real gx = bctx - dg*anrmx;
-                    Real gy = bcty - dg*anrmy;
-                    Real gz = bctz - dg*anrmz;
-                    Real sx = amrex::Math::copysign(1.0,anrmx);
-                    Real sy = amrex::Math::copysign(1.0,anrmy);
-                    Real sz = amrex::Math::copysign(1.0,anrmz);
-                    int ii = i - static_cast<int>(sx);
-                    int jj = j - static_cast<int>(sy);
-                    int kk = k - static_cast<int>(sz);
-
-                    gx = sx*gx;
-                    gy = sy*gy;
-                    gz = sz*gz;
-                    Real gxy = gx*gy;
-                    Real gxz = gx*gz;
-                    Real gyz = gy*gz;
-                    Real gxyz = gx*gy*gz;
-                    Real phig = (1.0+gx+gy+gz+gxy+gxz+gyz+gxyz) * x(i ,j ,k ,n)
-                        +       (-gz - gxz - gyz - gxyz)        * x(i ,j ,kk,n)
-                        +       (-gy - gxy - gyz - gxyz)        * x(i ,jj,k ,n)
-                        +       (gyz + gxyz)                    * x(i ,jj,kk,n)
-                        +       (-gx - gxy - gxz - gxyz)        * x(ii,j ,k ,n)
-                        +       (gxz + gxyz)                    * x(ii,j ,kk,n)
-                        +       (gxy + gxyz)                    * x(ii,jj,k ,n)
-                        +       (-gxyz)                         * x(ii,jj,kk,n);
-
-                    Real dphidn = (phib-phig)/dg;
-
-                    feb = dphidn * ba(i,j,k) * beb(i,j,k,n);
-
-                } else if (phi_on_centroid) {
-                    feb = grad_eb_of_phi_on_centroids_extdir(i,j,k,n,x,phieb,flag,ccent,bcent,vfrc,
-                                                             anrmx,anrmy,anrmz,is_eb_inhomog,vol_eps,
-                                                             on_x_face,domlo_x,domhi_x,bcval_xlo,bcval_xhi,
-                                                             on_y_face,domlo_y,domhi_y,bcval_ylo,bcval_yhi,
-                                                             on_z_face,domlo_z,domhi_z,bcval_zlo,bcval_zhi);
-                    feb *= ba(i,j,k) * beb(i,j,k,n);
+                    fxm = (1.0-fracy)*(1.0-fracz)*fxm +
+                        fracy*(1.0-fracz)*bX(i,jj,k ,n)*(x(i,jj,k ,n)-x(i-1,jj,k ,n)) +
+                        fracz*(1.0-fracy)*bX(i,j ,kk,n)*(x(i,j ,kk,n)-x(i-1,j ,kk,n)) +
+                        fracy*     fracz *bX(i,jj,kk,n)*(x(i,jj,kk,n)-x(i-1,jj,kk,n));
                 }
+                else if (beta_on_centroid)
+                {
+                    fxm = (1.0-fracy)*(1.0-fracz)*(x(i, j, k,n)-x(i-1, j, k,n)) +
+                               fracy *(1.0-fracz)*(x(i,jj, k,n)-x(i-1,jj, k,n)) +
+                               fracz *(1.0-fracy)*(x(i, j,kk,n)-x(i-1, j,kk,n)) +
+                               fracy *     fracz *(x(i,jj,kk,n)-x(i-1,jj,kk,n));
+                    fxm *= bX(i,j,k,n);
+                }
+            }
+
+            Real fxp = bX(i+1,j,k,n)*(x(i+1,j,k,n) - x(i,j,k,n));
+            if (apxp != 0.0 and apxp != 1.0) {
+                int jj = j + static_cast<int>(amrex::Math::copysign(1.0,fcx(i+1,j,k,0)));
+                int kk = k + static_cast<int>(amrex::Math::copysign(1.0,fcx(i+1,j,k,1)));
+                Real fracy = (ccm(i,jj,k) || ccm(i+1,jj,k)) ? amrex::Math::abs(fcx(i+1,j,k,0)) : 0.0;
+                Real fracz = (ccm(i,j,kk) || ccm(i+1,j,kk)) ? amrex::Math::abs(fcx(i+1,j,k,1)) : 0.0;
+                if (beta_on_center)
+                {
+                    fxp = (1.0-fracy)*(1.0-fracz)*fxp +
+                        fracy*(1.0-fracz)*bX(i+1,jj,k ,n)*(x(i+1,jj,k ,n)-x(i,jj,k ,n)) +
+                        fracz*(1.0-fracy)*bX(i+1,j ,kk,n)*(x(i+1,j ,kk,n)-x(i,j ,kk,n)) +
+                        fracy*     fracz *bX(i+1,jj,kk,n)*(x(i+1,jj,kk,n)-x(i,jj,kk,n));
+                }
+                else if (beta_on_centroid)
+                {
+                    fxp = (1.0-fracy)*(1.0-fracz)*(x(i+1, j, k,n)-x(i, j, k,n)) +
+                               fracy *(1.0-fracz)*(x(i+1,jj, k,n)-x(i,jj, k,n)) +
+                               fracz *(1.0-fracy)*(x(i+1, j,kk,n)-x(i, j,kk,n)) +
+                               fracy *     fracz *(x(i+1,jj,kk,n)-x(i,jj,kk,n));
+                    fxp *= bX(i+1,j,k,n);
+                }
+            }
+
+            Real fym = bY(i,j,k,n)*(x(i,j,k,n) - x(i,j-1,k,n));
+            if (apym != 0.0 and apym != 1.0) {
+                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j,k,0)));
+                int kk = k + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j,k,1)));
+                Real fracx = (ccm(ii,j-1,k) || ccm(ii,j,k)) ? amrex::Math::abs(fcy(i,j,k,0)) : 0.0;
+                Real fracz = (ccm(i,j-1,kk) || ccm(i,j,kk)) ? amrex::Math::abs(fcy(i,j,k,1)) : 0.0;
+                if (beta_on_center)
+                {
+                    fym = (1.0-fracx)*(1.0-fracz)*fym +
+                        fracx*(1.0-fracz)*bY(ii,j,k ,n)*(x(ii,j,k ,n)-x(ii,j-1,k ,n)) +
+                        fracz*(1.0-fracx)*bY(i ,j,kk,n)*(x(i ,j,kk,n)-x(i ,j-1,kk,n)) +
+                        fracx*     fracz *bY(ii,j,kk,n)*(x(ii,j,kk,n)-x(ii,j-1,kk,n));
+                }
+                else if (beta_on_centroid)
+                {
+                    fym = (1.0-fracx)*(1.0-fracz)*(x( i,j, k,n)-x( i,j-1, k,n)) +
+                               fracx *(1.0-fracz)*(x(ii,j, k,n)-x(ii,j-1, k,n)) +
+                               fracz *(1.0-fracx)*(x(i ,j,kk,n)-x( i,j-1,kk,n)) +
+                               fracx *     fracz *(x(ii,j,kk,n)-x(ii,j-1,kk,n));
+                    fym *= bY(i,j,k,n);
+
+                }
+            }
+
+            Real fyp = bY(i,j+1,k,n)*(x(i,j+1,k,n) - x(i,j,k,n));
+            if (apyp != 0.0 and apyp != 1.0) {
+                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j+1,k,0)));
+                int kk = k + static_cast<int>(amrex::Math::copysign(1.0,fcy(i,j+1,k,1)));
+                Real fracx = (ccm(ii,j,k) || ccm(ii,j+1,k)) ? amrex::Math::abs(fcy(i,j+1,k,0)) : 0.0;
+                Real fracz = (ccm(i,j,kk) || ccm(i,j+1,kk)) ? amrex::Math::abs(fcy(i,j+1,k,1)) : 0.0;
+                if (beta_on_center)
+                {
+                    fyp = (1.0-fracx)*(1.0-fracz)*fyp +
+                        fracx*(1.0-fracz)*bY(ii,j+1,k ,n)*(x(ii,j+1,k ,n)-x(ii,j,k ,n)) +
+                        fracz*(1.0-fracx)*bY(i ,j+1,kk,n)*(x(i ,j+1,kk,n)-x(i ,j,kk,n)) +
+                        fracx*     fracz *bY(ii,j+1,kk,n)*(x(ii,j+1,kk,n)-x(ii,j,kk,n));
+                }
+                else if (beta_on_centroid)
+                {
+                    fyp = (1.0-fracx)*(1.0-fracz)*(x( i,j+1, k,n)-x( i,j, k,n)) +
+                               fracx *(1.0-fracz)*(x(ii,j+1, k,n)-x(ii,j, k,n)) +
+                               fracz *(1.0-fracx)*(x( i,j+1,kk,n)-x( i,j,kk,n)) +
+                               fracx *     fracz *(x(ii,j+1,kk,n)-x(ii,j,kk,n));
+                    fyp *= bY(i,j+1,k,n);
+
+                }
+            }
+
+            Real fzm = bZ(i,j,k,n)*(x(i,j,k,n) - x(i,j,k-1,n));
+            if (apzm != 0.0 and apzm != 1.0) {
+                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k,0)));
+                int jj = j + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k,1)));
+                Real fracx = (ccm(ii,j,k-1) || ccm(ii,j,k)) ? amrex::Math::abs(fcz(i,j,k,0)) : 0.0;
+                Real fracy = (ccm(i,jj,k-1) || ccm(i,jj,k)) ? amrex::Math::abs(fcz(i,j,k,1)) : 0.0;
+                if (beta_on_center)
+                {
+                    fzm = (1.0-fracx)*(1.0-fracy)*fzm +
+                        fracx*(1.0-fracy)*bZ(ii,j ,k,n)*(x(ii,j ,k,n)-x(ii,j ,k-1,n)) +
+                        fracy*(1.0-fracx)*bZ(i ,jj,k,n)*(x(i ,jj,k,n)-x(i ,jj,k-1,n)) +
+                        fracx*     fracy *bZ(ii,jj,k,n)*(x(ii,jj,k,n)-x(ii,jj,k-1,n));
+                }
+                else if (beta_on_centroid)
+                {
+                    fzm = (1.0-fracx)*(1.0-fracy)*(x( i, j,k,n)-x( i, j,k-1,n)) +
+                               fracx *(1.0-fracy)*(x(ii, j,k,n)-x(ii, j,k-1,n)) +
+                               fracy *(1.0-fracx)*(x( i,jj,k,n)-x( i,jj,k-1,n)) +
+                               fracx *     fracy *(x(ii,jj,k,n)-x(ii,jj,k-1,n));
+                    fzm *= bZ(i,j,k,n);
+
+                }
+            }
+
+            Real fzp = bZ(i,j,k+1,n)*(x(i,j,k+1,n) - x(i,j,k,n));
+            if (apzp != 0.0 and apzp != 1.0) {
+                int ii = i + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k+1,0)));
+                int jj = j + static_cast<int>(amrex::Math::copysign(1.0,fcz(i,j,k+1,1)));
+                Real fracx = (ccm(ii,j,k) || ccm(ii,j,k+1)) ? amrex::Math::abs(fcz(i,j,k+1,0)) : 0.0;
+                Real fracy = (ccm(i,jj,k) || ccm(i,jj,k+1)) ? amrex::Math::abs(fcz(i,j,k+1,1)) : 0.0;
+                if (beta_on_center)
+                {
+                    fzp = (1.0-fracx)*(1.0-fracy)*fzp +
+                        fracx*(1.0-fracy)*bZ(ii,j ,k+1,n)*(x(ii,j ,k+1,n)-x(ii,j ,k,n)) +
+                        fracy*(1.0-fracx)*bZ(i ,jj,k+1,n)*(x(i ,jj,k+1,n)-x(i ,jj,k,n)) +
+                        fracx*     fracy *bZ(ii,jj,k+1,n)*(x(ii,jj,k+1,n)-x(ii,jj,k,n));
+                }
+                else if (beta_on_centroid)
+                {
+                    fzp = (1.0-fracx)*(1.0-fracy)*(x( i, j,k+1,n)-x( i, j,k,n)) +
+                               fracx *(1.0-fracy)*(x(ii, j,k+1,n)-x(ii, j,k,n)) +
+                               fracy *(1.0-fracx)*(x( i,jj,k+1,n)-x( i,jj,k,n)) +
+                               fracx *     fracy *(x(ii,jj,k+1,n)-x(ii,jj,k,n));
+                    fzp *= bZ(i,j,k+1,n);
+
+                }
+            }
+
+            Real feb = 0.0;
+            if (is_eb_dirichlet and flag(i,j,k).isSingleValued()) {
+                Real dapx = apxm-apxp;
+                Real dapy = apym-apyp;
+                Real dapz = apzm-apzp;
+                Real anorm = std::sqrt(dapx*dapx+dapy*dapy+dapz*dapz);
+                Real anorminv = 1.0/anorm;
+                Real anrmx = dapx * anorminv;
+                Real anrmy = dapy * anorminv;
+                Real anrmz = dapz * anorminv;
+
+                Real phib = is_eb_inhomog ? phieb(i,j,k,n) : 0.0;
+
+                Real bctx = bcent(i,j,k,0);
+                Real bcty = bcent(i,j,k,1);
+                Real bctz = bcent(i,j,k,2);
+                Real dx_eb = get_dx_eb(kappa);
+
+                Real dg = dx_eb / amrex::max(amrex::Math::abs(anrmx), amrex::Math::abs(anrmy),
+                                             amrex::Math::abs(anrmz));
+                Real gx = bctx - dg*anrmx;
+                Real gy = bcty - dg*anrmy;
+                Real gz = bctz - dg*anrmz;
+                Real sx = amrex::Math::copysign(1.0,anrmx);
+                Real sy = amrex::Math::copysign(1.0,anrmy);
+                Real sz = amrex::Math::copysign(1.0,anrmz);
+                int ii = i - static_cast<int>(sx);
+                int jj = j - static_cast<int>(sy);
+                int kk = k - static_cast<int>(sz);
+
+                gx = sx*gx;
+                gy = sy*gy;
+                gz = sz*gz;
+                Real gxy = gx*gy;
+                Real gxz = gx*gz;
+                Real gyz = gy*gz;
+                Real gxyz = gx*gy*gz;
+                Real phig = (1.0+gx+gy+gz+gxy+gxz+gyz+gxyz) * x(i ,j ,k ,n)
+                    +       (-gz - gxz - gyz - gxyz)        * x(i ,j ,kk,n)
+                    +       (-gy - gxy - gyz - gxyz)        * x(i ,jj,k ,n)
+                    +       (gyz + gxyz)                    * x(i ,jj,kk,n)
+                    +       (-gx - gxy - gxz - gxyz)        * x(ii,j ,k ,n)
+                    +       (gxz + gxyz)                    * x(ii,j ,kk,n)
+                    +       (gxy + gxyz)                    * x(ii,jj,k ,n)
+                    +       (-gxyz)                         * x(ii,jj,kk,n);
+
+                Real dphidn = (phib-phig)/dg;
+
+                feb = dphidn * ba(i,j,k) * beb(i,j,k,n);
             }
 
             y(i,j,k,n) = alpha*a(i,j,k)*x(i,j,k,n) + (1.0/kappa) *
@@ -484,6 +578,48 @@ void mlebabeclap_ebflux (int i, int j, int k, int n,
             feb(i,j,k,n) = -beb(i,j,k,n) * dphidn;
         }
     }
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void mlebabeclap_gsrb_centroid (Box const& box,
+                       Array4<Real> const& phi_orig, Array4<Real const> const& rhs,
+                       Real alpha, Array4<Real const> const& a,
+                       Real dhx, Real dhy, Real dhz,
+                       Array4<Real const> const& bX, Array4<Real const> const& bY,
+                       Array4<Real const> const& bZ,
+                       Array4<int const> const& m0, Array4<int const> const& m2,
+                       Array4<int const> const& m4,
+                       Array4<int const> const& m1, Array4<int const> const& m3,
+                       Array4<int const> const& m5,
+                       Array4<Real const> const& f0, Array4<Real const> const& f2,
+                       Array4<Real const> const& f4,
+                       Array4<Real const> const& f1, Array4<Real const> const& f3,
+                       Array4<Real const> const& f5,
+                       Array4<const int> const& ccm, Array4<EBCellFlag const> const& flag,
+                       Array4<Real const> const& vfrc,
+                       Array4<Real const> const& apx, Array4<Real const> const& apy,
+                       Array4<Real const> const& apz,
+                       Array4<Real const> const& fcx, Array4<Real const> const& fcy,
+                       Array4<Real const> const& fcz,
+                       Array4<Real const> const& ba, Array4<Real const> const& bcent,
+                       Array4<Real const> const& ccent_orig, Array4<Real const> const& beb,
+                       Array4<Real const> const& cc0,
+                       Array4<Real> const& phi,
+                       Array4<Real> const& ccent,
+                       Array4<Real> const& slopes,
+                       Array4<Real const> const& bcval_xlo, 
+                       Array4<Real const> const& bcval_ylo,
+                       Array4<Real const> const& bcval_zlo,
+                       Array4<Real const> const& bcval_xhi, 
+                       Array4<Real const> const& bcval_yhi,
+                       Array4<Real const> const& bcval_zhi,
+                       const int& domlo_x, const int& domlo_y, const int& domlo_z,
+                       const int& domhi_x, const int& domhi_y, const int& domhi_z,
+                       const bool& on_x_face, const bool& on_y_face, const bool& on_z_face,
+                       bool is_eb_dirichlet, bool is_eb_inhomog,
+                       Box const& vbox, int redblack, int ncomp) noexcept
+{
+   //TODO: Implement this
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
@@ -1335,6 +1471,39 @@ void mlebabeclap_grad_z_0 (Box const& box, Array4<Real> const& gz, Array4<Real c
             gz(i,j,k,n) = dzi*(sol(i,j,k,n)-sol(i,j,k-1,n));
         }
     });
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void mlebabeclap_normalize_centroid (Box const& box, Array4<Real> const& phi,
+                            Array4<Real      > const& x,
+                            Real alpha, Array4<Real const> const& a,
+                            Real dhx, Real dhy, Real dhz,
+                            Array4<Real const> const& bX, Array4<Real const> const& bY,
+                            Array4<Real const> const& bZ,
+                            Array4<const int> const& ccm, Array4<EBCellFlag const> const& flag,
+                            Array4<Real const> const& vfrc,
+                            Array4<Real const> const& apx, Array4<Real const> const& apy,
+                            Array4<Real const> const& apz,
+                            Array4<Real const> const& fcx, Array4<Real const> const& fcy,
+                            Array4<Real const> const& fcz,
+                            Array4<Real const> const& ba, Array4<Real const> const& bcent,
+                            Array4<Real const> const& ccent_orig, Array4<Real const> const& beb,
+                            Array4<Real const> const& phieb,
+                            Array4<Real> const& gamma,
+                            Array4<Real> const& ccent,
+                            Array4<Real> const& slopes,
+                            Array4<Real const> const& bcval_xlo, 
+                            Array4<Real const> const& bcval_ylo,
+                            Array4<Real const> const& bcval_zlo,
+                            Array4<Real const> const& bcval_xhi, 
+                            Array4<Real const> const& bcval_yhi,
+                            Array4<Real const> const& bcval_zhi,
+                            const int& domlo_x, const int& domlo_y, const int& domlo_z,
+                            const int& domhi_x, const int& domhi_y, const int& domhi_z,
+                            const bool& on_x_face, const bool& on_y_face, const bool& on_z_face,
+                            bool is_eb_dirichlet, bool is_eb_inhomog, int ncomp) noexcept
+{
+   //TODO: Implement this
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE

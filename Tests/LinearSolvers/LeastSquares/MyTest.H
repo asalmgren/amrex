@@ -43,7 +43,11 @@ private:
     amrex::Vector<amrex::BCRec> m_bcrec;
 
     // We define (vfrac < vol_eps) as the trigger for a cell to be merged
+#if (AMREX_SPACEDIM == 2)
     static constexpr amrex::Real vol_eps = 1.e-2;
+#else
+    static constexpr amrex::Real vol_eps = 0.0;
+#endif
 
     // For MLMG solver
     int verbose = 2;
