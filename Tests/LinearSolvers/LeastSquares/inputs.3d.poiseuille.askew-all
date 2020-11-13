@@ -14,6 +14,7 @@ max_level = 0
 ref_ratio = 2
 n_cell = 80
 max_grid_size = 80
+fabarray.mfiter_tile_size = 1024  1024  1024
 max_coarsening_level = 0
 prob_lo = 0.   0.   0.
 prob_hi = 8.0  8.0  8.0
