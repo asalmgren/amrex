@@ -237,8 +237,7 @@ Real grad_x_of_phi_on_centroids(int i,int j,int k,int n,
                                 Array4<Real const> const& vfrac,
                                 Real& yloc_on_xface,
                                 bool is_eb_dirichlet, 
-                                bool is_eb_inhomog,
-                                Real vol_eps)
+                                bool is_eb_inhomog)
 {
     Array2D<Real,0,11,0,5> Amatrix;
     Array1D<Real,0, 5    > rhs;
@@ -263,15 +262,12 @@ Real grad_x_of_phi_on_centroids(int i,int j,int k,int n,
                 Real x_off = static_cast<Real>(ii-i) + 0.5;
                 Real y_off = static_cast<Real>(jj-j);
 
-                if (vfrac(ii,jj,k) > vol_eps)
-                {
-                    Amatrix(a_ind,0) = 1.0;
-                    Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0);
-                    Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - yloc_on_xface;
-                    Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
-                    Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
-                    Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
-                }
+                Amatrix(a_ind,0) = 1.0;
+                Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0);
+                Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - yloc_on_xface;
+                Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
+                Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
+                Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
 
                 if (!flag(ii,jj,k).isRegular())
                 {
@@ -338,8 +334,7 @@ Real grad_y_of_phi_on_centroids(int i,int j,int k,int n,
                                 Array4<Real const> const& vfrac,
                                 Real& xloc_on_yface,
                                 bool is_eb_dirichlet, 
-                                bool is_eb_inhomog,
-                                Real vol_eps)
+                                bool is_eb_inhomog)
 {
     Array2D<Real,0,11,0,5> Amatrix;
     Array1D<Real,0, 5    > rhs;
@@ -362,15 +357,12 @@ Real grad_y_of_phi_on_centroids(int i,int j,int k,int n,
                 Real x_off = static_cast<Real>(ii-i);
                 Real y_off = static_cast<Real>(jj-j) + 0.5;
 
-                if (vfrac(ii,jj,k) > vol_eps)
-                {
-                    Amatrix(a_ind,0) = 1.0;
-                    Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - xloc_on_yface;
-                    Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1);
-                    Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
-                    Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
-                    Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
-                }
+                Amatrix(a_ind,0) = 1.0;
+                Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - xloc_on_yface;
+                Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1);
+                Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
+                Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
+                Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
 
                 if (!flag(ii,jj,k).isRegular())
                 {
@@ -432,8 +424,7 @@ Real grad_eb_of_phi_on_centroids(int i,int j,int k,int n,
                                 Array4<Real const> const& bcent,
                                 Array4<Real const> const& vfrac,
                                 Real& nrmx, Real& nrmy,
-                                bool is_eb_inhomog,
-                                Real vol_eps)
+                                bool is_eb_inhomog)
 {
     Array2D<Real,0,17,0,5> Amatrix;
     Array1D<Real,0, 5    > rhs;
@@ -457,15 +448,12 @@ Real grad_eb_of_phi_on_centroids(int i,int j,int k,int n,
 
                 if (flag(i,j,k).isConnected((ii-i),(jj-j),0))
                 {
-                    if (vfrac(ii,jj,k) > vol_eps)
-                    {
-                        Amatrix(a_ind,0) = 1.0;
-                        Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - bcent(i,j,k,0);
-                        Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - bcent(i,j,k,1);
-                    }
+                    Amatrix(a_ind,0) = 1.0;
+                    Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - bcent(i,j,k,0);
+                    Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - bcent(i,j,k,1);
                 }
 
-                if (flag(i,j,k).isConnected((ii-i),(jj-j),0) and !flag(ii,jj,k).isRegular())
+                if (flag(i,j,k).isConnected((ii-i),(jj-j),0) && !flag(ii,jj,k).isRegular())
                 {
                     Amatrix(a_ind+9,0) = 1.0;
                     Amatrix(a_ind+9,1) = x_off + bcent(ii,jj,k,0) - bcent(i,j,k,0);
@@ -494,7 +482,7 @@ Real grad_eb_of_phi_on_centroids(int i,int j,int k,int n,
                 {
                     int a_ind  = (jj-(j-1)) + 3*(ii-(i-1));
                     rhs(irow) += Amatrix(a_ind,irow) * phi(ii,jj,k,n);
-                    if (flag(ii,jj,k).isSingleValued() and is_eb_inhomog)
+                    if (flag(ii,jj,k).isSingleValued() && is_eb_inhomog)
                         rhs(irow) += Amatrix(a_ind+9,irow)*phieb(ii,jj,k,n);
                 }
     }
@@ -519,7 +507,6 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                                        Array4<Real const> const& vfrac,
                                        Real& yloc_on_xface,
                                        bool is_eb_dirichlet, bool is_eb_inhomog,
-                                       Real vol_eps,
                                        const bool on_x_face, const int domlo_x, const int domhi_x,
                                        Array4<Real const> const& bcval_xlo,
                                        Array4<Real const> const& bcval_xhi,
@@ -547,10 +534,10 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
 
             // Don't include corner cells. Could make this even more strict
             // by removing the on_?_face restrictions.
-            if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
+            if (((on_x_face && ii < domlo_x) && (on_y_face && jj < domlo_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii < domlo_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj < domlo_y))) {
               continue;
             }
 
@@ -558,7 +545,7 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
             {
 
                 int a_ind  = (jj-(j-1)) + 3*(ii-(i-im));
-                AMREX_ASSERT(0<= a_ind and a_ind <= 8);
+                AMREX_ASSERT(0<= a_ind && a_ind <= 8);
 
                 // This shifts the x-offset by a normalized half-dx so that
                 // x=0 is the x-coordinate of the FACE centroid.
@@ -566,37 +553,34 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                 Real y_off = static_cast<Real>(jj-j);
 
                 if(on_x_face){
-                    if (ii < domlo_x and (vfrac(ii+1,jj,k) != 1.0 or vfrac(ii+2,jj,k) != 1.0) )
+                    if (ii < domlo_x && (vfrac(ii+1,jj,k) != 1.0 || vfrac(ii+2,jj,k) != 1.0) )
                         continue;
-                    if (ii > domhi_x and (vfrac(ii-1,jj,k) != 1.0 or vfrac(ii-2,jj,k) != 1.0))
+                    if (ii > domhi_x && (vfrac(ii-1,jj,k) != 1.0 || vfrac(ii-2,jj,k) != 1.0))
                         continue;
                 }
 
                 if(on_y_face){
-                    if (jj < domlo_y and (vfrac(ii,jj+1,k) != 1.0 or vfrac(ii,jj+2,k) != 1.0) )
+                    if (jj < domlo_y && (vfrac(ii,jj+1,k) != 1.0 || vfrac(ii,jj+2,k) != 1.0) )
                         continue;
-                    if (jj > domhi_y and (vfrac(ii,jj-1,k) != 1.0 or vfrac(ii,jj-2,k) != 1.0) )
+                    if (jj > domhi_y && (vfrac(ii,jj-1,k) != 1.0 || vfrac(ii,jj-2,k) != 1.0) )
                         continue;
                 }
 
-                if (vfrac(ii,jj,k) > vol_eps)
-                {
-                    Amatrix(a_ind,0) = 1.0;
-                    Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0);
-                    Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - yloc_on_xface;
-                    Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
-                    Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
-                    Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
-                }
+                Amatrix(a_ind,0) = 1.0;
+                Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0);
+                Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - yloc_on_xface;
+                Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
+                Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
+                Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
 
                 // Add in information about the location of the EB. Exclude
                 // EBs that are outside the domain.
-                if (flag(ii,jj,k).isSingleValued() and
-                    domlo_x <= ii and ii <= domhi_x and
-                    domlo_y <= jj and jj <= domhi_y)
+                if (flag(ii,jj,k).isSingleValued() &&
+                    domlo_x <= ii && ii <= domhi_x &&
+                    domlo_y <= jj && jj <= domhi_y)
                 {
                     int a_ind_eb  = a_ind + 9;
-                    AMREX_ASSERT(9<= a_ind_eb and a_ind_eb <= 17);
+                    AMREX_ASSERT(9<= a_ind_eb && a_ind_eb <= 17);
 
                     if (is_eb_dirichlet) {
                         Amatrix(a_ind_eb,0) = 1.0;
@@ -625,7 +609,7 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
 
 #if 0
     //////////////////////////////////////////////////////////////////////////
-    if(i==3 and j==0 and n==0){
+    if(i==3 && j==0 && n==0){
       amrex::Print() << "\n\n grad_x_of_phi_on_centroids_extdir";
       amrex::Print() << "\n\n\n Matrix data: \n";
 
@@ -640,14 +624,14 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
           if (!flag(ii,jj,k).isCovered())
           {
             int irow   = (jj-(j-1)) + 3*(ii-(i-im)) ;
-            AMREX_ASSERT(0<=irow and irow <9);
+            AMREX_ASSERT(0<=irow && irow <9);
 
             // A(irow,0) is 1 or 0. Use it to zero out phi if we don't need it.
             phi_vec(irow) = Amatrix(irow,0)*phi(ii,jj,k,n);
 
             if (flag(ii,jj,k).isSingleValued() && is_eb_dirichlet && is_eb_inhomog){
               int irow_eb  = irow + 9;
-              AMREX_ASSERT(9<=irow_eb and irow_eb < 18);
+              AMREX_ASSERT(9<=irow_eb && irow_eb < 18);
               phi_vec(irow_eb) = phieb(ii,jj,k,n);
             }
 
@@ -672,7 +656,7 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
     // Make the RHS = A^T v
 
 
-    // if(i==3 and j==0 and n==0)
+    // if(i==3 && j==0 && n==0)
     //   amrex::Print() << "\n\n\n";
 
 
@@ -687,7 +671,7 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                 {
 
                     int a_ind  = (jj-(j-1)) + 3*(ii-(i-im));
-                    AMREX_ASSERT(0<=a_ind and a_ind <9);
+                    AMREX_ASSERT(0<=a_ind && a_ind <9);
 
                     Real phi_val = Amatrix(a_ind,0) * phi(ii,jj,k,n);
 
@@ -701,13 +685,13 @@ Real grad_x_of_phi_on_centroids_extdir(int i,int j,int k,int n,
     }
 
 
-    // if(i==3 and j==0 and n==0)
+    // if(i==3 && j==0 && n==0)
     //   amrex::Print() << "\n\n\n";
 
 
     cholsol_for_eb(Amatrix, rhs);
 
-    //if(i==3 and j==0 and n==0)
+    //if(i==3 && j==0 && n==0)
     //   amrex::Print() << "RHS " << rhs(1) << "\n\n\n";
 
     return rhs(1);
@@ -730,7 +714,6 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                                        Array4<Real const> const& vfrac,
                                        Real& xloc_on_yface,
                                        bool is_eb_dirichlet, bool is_eb_inhomog,
-                                       Real vol_eps,
                                        const bool on_x_face, const int domlo_x, const int domhi_x,
                                        Array4<Real const> const& bcval_xlo,
                                        Array4<Real const> const& bcval_xhi,
@@ -758,10 +741,10 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
         {
 
             // Don't include corner cells.
-            if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
+            if (((on_x_face && ii < domlo_x) && (on_y_face && jj < domlo_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii < domlo_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj < domlo_y))) {
               continue;
             }
 
@@ -769,43 +752,39 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
             if (!flag(ii,jj,k).isCovered())
             {
                 int a_ind  = (ii-(i-1)) + 3*(jj-(j-jm));
-                AMREX_ASSERT(0<= a_ind and a_ind <= 8);
+                AMREX_ASSERT(0<= a_ind && a_ind <= 8);
 
                 Real x_off = static_cast<Real>(ii-i);
                 Real y_off = static_cast<Real>(jj-j) + 0.5;
 
                 if(on_x_face){
-                    if (ii < domlo_x and (vfrac(ii+1,jj,k) != 1.0 or vfrac(ii+2,jj,k) != 1.0) )
+                    if (ii < domlo_x && (vfrac(ii+1,jj,k) != 1.0 || vfrac(ii+2,jj,k) != 1.0) )
                         continue;
-                    if (ii > domhi_x and (vfrac(ii-1,jj,k) != 1.0 or vfrac(ii-2,jj,k) != 1.0))
+                    if (ii > domhi_x && (vfrac(ii-1,jj,k) != 1.0 || vfrac(ii-2,jj,k) != 1.0))
                         continue;
                 }
 
                 if(on_y_face){
-                    if (jj < domlo_y and (vfrac(ii,jj+1,k) != 1.0 or vfrac(ii,jj+2,k) != 1.0) )
+                    if (jj < domlo_y && (vfrac(ii,jj+1,k) != 1.0 || vfrac(ii,jj+2,k) != 1.0) )
                         continue;
-                    if (jj > domhi_y and (vfrac(ii,jj-1,k) != 1.0 or vfrac(ii,jj-2,k) != 1.0) )
+                    if (jj > domhi_y && (vfrac(ii,jj-1,k) != 1.0 || vfrac(ii,jj-2,k) != 1.0) )
                         continue;
                 }
 
+                Amatrix(a_ind,0) = 1.0;
+                Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - xloc_on_yface;
+                Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1);
+                Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
+                Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
+                Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
 
-                if (vfrac(ii,jj,k) > vol_eps)
-                {
-                    Amatrix(a_ind,0) = 1.0;
-                    Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - xloc_on_yface;
-                    Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1);
-                    Amatrix(a_ind,3) = Amatrix(a_ind,1) * Amatrix(a_ind,1);
-                    Amatrix(a_ind,4) = Amatrix(a_ind,1) * Amatrix(a_ind,2);
-                    Amatrix(a_ind,5) = Amatrix(a_ind,2) * Amatrix(a_ind,2);
-                }
-
-                if (flag(ii,jj,k).isSingleValued() and
-                    domlo_x <= ii and ii <= domhi_x and
-                    domlo_y <= jj and jj <= domhi_y)
+                if (flag(ii,jj,k).isSingleValued() &&
+                    domlo_x <= ii && ii <= domhi_x &&
+                    domlo_y <= jj && jj <= domhi_y)
                 {
 
                     int a_ind_eb  = a_ind + 9;
-                    AMREX_ASSERT(9<= a_ind_eb and a_ind_eb <= 17);
+                    AMREX_ASSERT(9<= a_ind_eb && a_ind_eb <= 17);
 
                     if (is_eb_dirichlet) {
                         Amatrix(a_ind_eb,0) = 1.0;
@@ -835,7 +814,7 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
 
 #if 0
     //////////////////////////////////////////////////////////////////////////
-    if(i==2 and j==0 and n==0){
+    if(i==2 && j==0 && n==0){
         amrex::Print() << "\n\n grad_y_of_phi_on_centroids_extdir";
         amrex::Print() << "\n jj: " << j-jm << "  " << j+jp << "\n";
         amrex::Print() << "\n ii: " << i-1  << "  " << i+1 << "\n";
@@ -851,14 +830,14 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                 if (!flag(ii,jj,k).isCovered())
                 {
                     int irow  = (ii-(i-1)) + 3*(jj-(j-jm));
-                    AMREX_ASSERT(0<=irow and irow <9);
+                    AMREX_ASSERT(0<=irow && irow <9);
 
                     // A(irow,0) is 1 or 0. Use it to zero out phi if we don't need it.
                     phi_vec(irow) =  Amatrix(irow,0)*phi(ii,jj,k,n);
 
                     if (flag(ii,jj,k).isSingleValued() && is_eb_dirichlet && is_eb_inhomog){
                         int irow_eb  = irow + 9;
-                        AMREX_ASSERT(9<=irow_eb and irow_eb < 18);
+                        AMREX_ASSERT(9<=irow_eb && irow_eb < 18);
                         phi_vec(irow_eb) = phieb(ii,jj,k,n);
                     }
                 }
@@ -892,7 +871,7 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                 {
 
                     int a_ind  = (ii-(i-1)) + 3*(jj-(j-jm));
-                    AMREX_ASSERT(0<=irow and irow < 9);
+                    AMREX_ASSERT(0<=irow && irow < 9);
 
                     Real phi_val = Amatrix(a_ind,0)*phi(ii,jj,k,n);
 
@@ -901,7 +880,7 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                     if (flag(ii,jj,k).isSingleValued() &&
                         is_eb_dirichlet && is_eb_inhomog){
                       int irow_eb  = irow + 9;
-                      AMREX_ASSERT(9<=irow_eb and irow_eb < 18);
+                      AMREX_ASSERT(9<=irow_eb && irow_eb < 18);
                       rhs(irow_eb) += Amatrix(a_ind+9,irow)*phieb(ii,jj,k,n);
                     }
                 }
@@ -910,7 +889,7 @@ Real grad_y_of_phi_on_centroids_extdir(int i,int j,int k,int n,
 
     cholsol_for_eb(Amatrix, rhs);
 
-    //if(i==2 and j==0 and n==0)
+    //if(i==2 && j==0 && n==0)
     //   amrex::Print() << "RHS " << rhs(2) << "\n\n\n";
 
     return rhs(2);
@@ -927,7 +906,6 @@ Real grad_eb_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                                         Array4<Real const> const& vfrac,
                                         Real& nrmx, Real& nrmy,
                                         bool is_eb_inhomog,
-                                        Real vol_eps,
                                         const bool on_x_face, const int domlo_x, const int domhi_x,
                                         Array4<Real const> const& bcval_xlo,
                                         Array4<Real const> const& bcval_xhi,
@@ -952,10 +930,10 @@ Real grad_eb_of_phi_on_centroids_extdir(int i,int j,int k,int n,
             // This is likely overkill for EB grads.
             // Don't include corner cells. Could make this even more strict
             // by removing the on_?_face restrictions.
-            if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
+            if (((on_x_face && ii < domlo_x) && (on_y_face && jj < domlo_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii < domlo_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj < domlo_y))) {
               continue;
             }
 
@@ -968,33 +946,30 @@ Real grad_eb_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                 Real y_off = static_cast<Real>(jj-j);
 
                 if(on_x_face){
-                    if (ii < domlo_x and (vfrac(ii+1,jj,k) != 1.0 or vfrac(ii+2,jj,k) != 1.0) )
+                    if (ii < domlo_x && (vfrac(ii+1,jj,k) != 1.0 || vfrac(ii+2,jj,k) != 1.0) )
                         continue;
-                    if (ii > domhi_x and (vfrac(ii-1,jj,k) != 1.0 or vfrac(ii-2,jj,k) != 1.0))
+                    if (ii > domhi_x && (vfrac(ii-1,jj,k) != 1.0 || vfrac(ii-2,jj,k) != 1.0))
                         continue;
                 }
 
                 if(on_y_face){
-                    if (jj < domlo_y and (vfrac(ii,jj+1,k) != 1.0 or vfrac(ii,jj+2,k) != 1.0) )
+                    if (jj < domlo_y && (vfrac(ii,jj+1,k) != 1.0 || vfrac(ii,jj+2,k) != 1.0) )
                         continue;
-                    if (jj > domhi_y and (vfrac(ii,jj-1,k) != 1.0 or vfrac(ii,jj-2,k) != 1.0) )
+                    if (jj > domhi_y && (vfrac(ii,jj-1,k) != 1.0 || vfrac(ii,jj-2,k) != 1.0) )
                         continue;
                 }
 
 
                 if (flag(i,j,k).isConnected((ii-i),(jj-j),0))
                 {
-                    if (vfrac(ii,jj,k) > vol_eps)
-                    {
-                        Amatrix(a_ind,0) = 1.0;
-                        Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - bcent(i,j,k,0);
-                        Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - bcent(i,j,k,1);
-                    }
+                    Amatrix(a_ind,0) = 1.0;
+                    Amatrix(a_ind,1) = x_off + ccent(ii,jj,k,0) - bcent(i,j,k,0);
+                    Amatrix(a_ind,2) = y_off + ccent(ii,jj,k,1) - bcent(i,j,k,1);
                 }
 
                 // Include information from the EB unless it is outside the domain
-                if (flag(i,j,k).isConnected((ii-i),(jj-j),0) and flag(ii,jj,k).isSingleValued() and
-                    domlo_x <= ii and ii <= domhi_x and domlo_y <= jj and jj <= domhi_y)
+                if (flag(i,j,k).isConnected((ii-i),(jj-j),0) && flag(ii,jj,k).isSingleValued() &&
+                    domlo_x <= ii && ii <= domhi_x && domlo_y <= jj && jj <= domhi_y)
                 {
                     Amatrix(a_ind+9,0) = 1.0;
                     Amatrix(a_ind+9,1) = x_off + bcent(ii,jj,k,0) - bcent(i,j,k,0);
@@ -1023,14 +998,14 @@ Real grad_eb_of_phi_on_centroids_extdir(int i,int j,int k,int n,
                 {
 
                     int a_ind  = (jj-(j-1)) + 3*(ii-(i-1));
-                    AMREX_ASSERT(0<=a_ind and a_ind <9);
+                    AMREX_ASSERT(0<=a_ind && a_ind <9);
 
                     // A(a_ind,0) is 1 or 0. Use it to mask phi.
                     Real phi_val = Amatrix(a_ind,0)*phi(ii,jj,k,n);
 
                     rhs(irow) += Amatrix(a_ind,irow) * phi_val;
 
-                    if (flag(ii,jj,k).isSingleValued() and is_eb_inhomog)
+                    if (flag(ii,jj,k).isSingleValued() && is_eb_inhomog)
                         rhs(irow) += Amatrix(a_ind+9,irow)*phieb(ii,jj,k,n);
                 }
     }
@@ -1073,10 +1048,10 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
         {
 
             // Don't include corner cells.
-            if (((on_x_face and ii < domlo_x) and (on_y_face and jj < domlo_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii < domlo_x) and (on_y_face and jj > domhi_y)) or
-                ((on_x_face and ii > domhi_x) and (on_y_face and jj < domlo_y))) {
+            if (((on_x_face && ii < domlo_x) && (on_y_face && jj < domlo_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii < domlo_x) && (on_y_face && jj > domhi_y)) ||
+                ((on_x_face && ii > domhi_x) && (on_y_face && jj < domlo_y))) {
               continue;
             }
 
@@ -1088,31 +1063,28 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
                 Real y_off = static_cast<Real>(jj-j);
 
                 if(on_x_face){
-                    if (ii < domlo_x and (vfrac(ii+1,jj,k) != 1.0 or vfrac(ii+2,jj,k) != 1.0) )
+                    if (ii < domlo_x && (vfrac(ii+1,jj,k) != 1.0 || vfrac(ii+2,jj,k) != 1.0) )
                         continue;
-                    if (ii > domhi_x and (vfrac(ii-1,jj,k) != 1.0 or vfrac(ii-2,jj,k) != 1.0))
+                    if (ii > domhi_x && (vfrac(ii-1,jj,k) != 1.0 || vfrac(ii-2,jj,k) != 1.0))
                         continue;
                 }
 
                 if(on_y_face){
-                    if (jj < domlo_y and (vfrac(ii,jj+1,k) != 1.0 or vfrac(ii,jj+2,k) != 1.0) )
+                    if (jj < domlo_y && (vfrac(ii,jj+1,k) != 1.0 || vfrac(ii,jj+2,k) != 1.0) )
                         continue;
-                    if (jj > domhi_y and (vfrac(ii,jj-1,k) != 1.0 or vfrac(ii,jj-2,k) != 1.0) )
+                    if (jj > domhi_y && (vfrac(ii,jj-1,k) != 1.0 || vfrac(ii,jj-2,k) != 1.0) )
                         continue;
                 }
 
                 if (flag(i,j,k).isConnected((ii-i),(jj-j),0))
                 {
-                    // if (vfrac(ii,jj,k) > vol_eps)
-                    {
-                        Amatrix(a_ind,0) = 1.0;
-                        Amatrix(a_ind,1) = x_off + ccent_orig(ii,jj,k,0) - ccent_new(i,j,k,0);
-                        Amatrix(a_ind,2) = y_off + ccent_orig(ii,jj,k,1) - ccent_new(i,j,k,1);
-                    }
+                    Amatrix(a_ind,0) = 1.0;
+                    Amatrix(a_ind,1) = x_off + ccent_orig(ii,jj,k,0) - ccent_new(i,j,k,0);
+                    Amatrix(a_ind,2) = y_off + ccent_orig(ii,jj,k,1) - ccent_new(i,j,k,1);
                 }
 
-                if (flag(i,j,k).isConnected((ii-i),(jj-j),0) and !flag(ii,jj,k).isRegular() and
-                    (domlo_x <= ii and ii <= domhi_x and domlo_y <= jj and jj <= domhi_y))
+                if (flag(i,j,k).isConnected((ii-i),(jj-j),0) && !flag(ii,jj,k).isRegular() &&
+                    (domlo_x <= ii && ii <= domhi_x && domlo_y <= jj && jj <= domhi_y))
                 {
                     Amatrix(a_ind+9,0) = 1.0;
                     Amatrix(a_ind+9,1) = x_off + bcent(ii,jj,k,0) - ccent_new(i,j,k,0);
@@ -1133,7 +1105,7 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
 
 #if 0
     //////////////////////////////////////////////////////////////////////////
-    if(i==13 and j==0 and n==0){
+    if(i==13 && j==0 && n==0){
 
         Array1D<Real,0,17> phi_vec;
 
@@ -1145,12 +1117,12 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
             if (!flag(ii,jj,k).isCovered())
             {
                 int irow  = (jj-(j-1)) + 3*(ii-(i-1));
-                AMREX_ASSERT(0<=irow and irow <9);
+                AMREX_ASSERT(0<=irow && irow <9);
 
                 // A(a_ind,0) is 1 or 0. Use it to mask phi.
                 phi_vec(irow) = Amatrix(irow,0)*phi(ii,jj,k,n);
 
-                if (flag(ii,jj,k).isSingleValued() and is_eb_inhomog)
+                if (flag(ii,jj,k).isSingleValued() && is_eb_inhomog)
                     phi_vec(irow+9) = phieb(ii,jj,k,n);
             }
 
@@ -1188,13 +1160,13 @@ Real interp_to_new_centroid(int i,int j,int k,int n,
                 if (!flag(ii,jj,k).isCovered())
                 {
                     int a_ind  = (jj-(j-1)) + 3*(ii-(i-1));
-                    AMREX_ASSERT(0<=a_ind and a_ind <9);
+                    AMREX_ASSERT(0<=a_ind && a_ind <9);
 
-                    // A(a_ind,0) is 1 or 0. Use it to mask phi.
+                    // A(a_ind,0) is 1 || 0. Use it to mask phi.
                     Real phi_val = Amatrix(a_ind,0) * phi(ii,jj,k,n);
 
                     rhs(irow) += Amatrix(a_ind,irow) * phi_val;
-                    if (flag(ii,jj,k).isSingleValued() and is_eb_inhomog)
+                    if (flag(ii,jj,k).isSingleValued() && is_eb_inhomog)
                         rhs(irow) += Amatrix(a_ind+9,irow)*phieb(ii,jj,k,n);
                 }
     }
