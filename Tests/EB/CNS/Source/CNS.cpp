@@ -1,6 +1,10 @@
 
 #include <CNS.H>
 #include <CNS_F.H>
+#include <CNS_K.H>
+#include <CNS_tagging.H>
+#include <CNS_parm.H>
+#include <cns_prob.H>
 
 #include <AMReX_EBMultiFabUtil.H>
 #include <AMReX_ParmParse.H>
@@ -29,6 +33,8 @@ int       CNS::refine_cutcells          = 1;
 int       CNS::refine_max_dengrad_lev   = -1;
 Real      CNS::refine_dengrad           = 1.0e10;
 Vector<RealBox> CNS::refine_boxes;
+
+Real      CNS::gravity = 0.0;
 
 CNS::CNS ()
 {}
@@ -93,21 +99,25 @@ CNS::initData ()
 {
     BL_PROFILE("CNS::initData()");
 
-    const Real* dx  = geom.CellSize();
-    const Real* prob_lo = geom.ProbLo();
+    const auto geomdata = geom.data();
     MultiFab& S_new = get_new_data(State_Type);
-    Real cur_time   = state[State_Type].curTime();
+
+    Parm const* lparm = d_parm;
+    ProbParm const* lprobparm = d_prob_parm;
 
 #ifdef AMREX_USE_OMP
-#pragma omp parallel
+#pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
-      const Box& box = mfi.validbox();
-      cns_initdata(&level, &cur_time,
-                   BL_TO_FORTRAN_BOX(box),
-                   BL_TO_FORTRAN_ANYD(S_new[mfi]),
-                   dx, prob_lo);
+        const Box& box = mfi.validbox();
+        auto sfab = S_new.array(mfi);
+
+        amrex::ParallelFor(box,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            cns_initdata(i, j, k, sfab, geomdata, *lparm, *lprobparm);
+        });
     }
 
     MultiFab& C_new = get_new_data(Cost_Type);
@@ -342,34 +352,30 @@ CNS::errorEst (TagBoxArray& tags, int, int, Real time, int, int)
 
     if (level < refine_max_dengrad_lev)
     {
-        int ng = 1;
-        const auto& rho = derive("density", time, ng);
         const MultiFab& S_new = get_new_data(State_Type);
+        const Real cur_time = state[State_Type].curTime();
+        MultiFab rho(S_new.boxArray(), S_new.DistributionMap(), 1, 1);
+        FillPatch(*this, rho, rho.nGrow(), cur_time, State_Type, Density, 1, 0);
 
         const char   tagval = TagBox::SET;
-        const char clearval = TagBox::CLEAR;
-
-        auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S_new.Factory());
-        auto const& flags = fact.getMultiEBCellFlagFab();
+//        const char clearval = TagBox::CLEAR;
+        const Real dengrad_threshold = refine_dengrad;
 
 #ifdef AMREX_USE_OMP
-#pragma omp parallel
+#pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
-        for (MFIter mfi(*rho,true); mfi.isValid(); ++mfi)
+        for (MFIter mfi(rho,TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
 
-            const auto& flag = flags[mfi];
+            const auto rhofab = rho.array(mfi);
+            auto tag = tags.array(mfi);
 
-            const FabType typ = flag.getType(bx);
-            if (typ != FabType::covered)
+            amrex::ParallelFor(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                cns_tag_denerror(BL_TO_FORTRAN_BOX(bx),
-                                 BL_TO_FORTRAN_ANYD(tags[mfi]),
-                                 BL_TO_FORTRAN_ANYD((*rho)[mfi]),
-                                 BL_TO_FORTRAN_ANYD(flag),
-                                 &refine_dengrad, &tagval, &clearval);
-            }
+                cns_tag_denerror(i, j, k, tag, rhofab, dengrad_threshold, tagval);
+            });
         }
     }
 }
@@ -412,6 +418,14 @@ CNS::read_params ()
         refine_boxes.emplace_back(refboxlo.data(), refboxhi.data());
         ++irefbox;
     }
+
+    pp.query("gravity", gravity);
+
+    pp.query("eos_gamma", h_parm->eos_gamma);
+    pp.query("eos_mu"   , h_parm->eos_mu);
+
+    h_parm->Initialize();
+    amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
 }
 
 void
@@ -467,33 +481,40 @@ CNS::estTimeStep ()
 {
     BL_PROFILE("CNS::estTimeStep()");
 
-    Real estdt = std::numeric_limits<Real>::max();
-
-    const Real* dx = geom.CellSize();
+    const auto dx = geom.CellSizeArray();
     const MultiFab& S = get_new_data(State_Type);
+    Parm const* lparm = d_parm;
 
     auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S.Factory());
     auto const& flags = fact.getMultiEBCellFlagFab();
 
+    Real estdt = std::numeric_limits<Real>::max();
+
+    // Reduce min operation 
+    ReduceOps<ReduceOpMin> reduce_op;
+    ReduceData<Real> reduce_data(reduce_op);
+    using ReduceTuple = typename decltype(reduce_data)::Type;
+
 #ifdef AMREX_USE_OMP
-#pragma omp parallel reduction(min:estdt)
+#pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
+    for (MFIter mfi(S,false); mfi.isValid(); ++mfi)
     {
-        Real dt = std::numeric_limits<Real>::max();
-        for (MFIter mfi(S,true); mfi.isValid(); ++mfi)
+        const Box& bx = mfi.tilebox();
+        const auto& flag = flags[mfi];
+        auto const& s_arr = S.array(mfi);
+        if (flag.getType(bx) != FabType::covered)
         {
-            const Box& box = mfi.tilebox();
-
-            const auto& flag = flags[mfi];
-
-            if (flag.getType(box) != FabType::covered) {
-                cns_estdt(BL_TO_FORTRAN_BOX(box),
-                          BL_TO_FORTRAN_ANYD(S[mfi]),
-                          dx, &dt);
-            }
+          reduce_op.eval(bx, reduce_data, [=]
+             AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
+             {
+                 return cns_estdt(i,j,k,s_arr,dx,*lparm);
+             });
         }
-        estdt = std::min(estdt,dt);
-    }
+    } // mfi
+
+    ReduceTuple host_tuple = reduce_data.value();
+    estdt = amrex::min(estdt, amrex::get<0>(host_tuple));
 
     estdt *= cfl;
     ParallelDescriptor::ReduceRealMin(estdt);

@@ -7,11 +7,6 @@
 extern "C" {
 #endif
 
-    void cns_initdata (const int* level, const amrex_real* time,
-                       const int* lo, const int* hi,
-                       amrex_real* u, const int* ulo, const int* uhi,
-                       const amrex_real* dx, const amrex_real* problo);
-
     void cns_init_fort (const int* phys_bc_lo, const int* phys_bc_hi,
                         int, int, int, int, int, int, int,
                         const amrex_real* problo, const amrex_real* probhi);
@@ -30,22 +25,6 @@ extern "C" {
                        const int* dlo, const int* dhi,
                        const amrex_real* dx, const amrex_real* glo,
                        const amrex_real* time, const int* bc);
-
-    void cns_derpres (BL_FORT_FAB_ARG_3D(der),const int* nvar,
-                      const BL_FORT_FAB_ARG_3D(data),const int* ncomp,
-                      const int* lo, const int* hi,
-                      const int* domain_lo, const int* domain_hi,
-                      const amrex_real* delta, const amrex_real* xlo,
-                      const amrex_real* time, const amrex_real* dt, const int* bcrec,
-                      const int* level, const int* grid_no);
-
-    void cns_dervel (BL_FORT_FAB_ARG_3D(der),const int* nvar,
-                     const BL_FORT_FAB_ARG_3D(data),const int* ncomp,
-                     const int* lo, const int* hi,
-                     const int* domain_lo, const int* domain_hi,
-                     const amrex_real* delta, const amrex_real* xlo,
-                     const amrex_real* time, const amrex_real* dt, const int* bcrec,
-                     const int* level, const int* grid_no);
 
     void cns_compute_temperature (const int* lo, const int* hi,
                                   amrex_real* u, const int* ulo, const int* uhi);
@@ -85,14 +64,6 @@ extern "C" {
                               amrex_real* dm_as_fine, const int* dflo, const int* dfhi,
                               const int* levmsk, const int* lmlo, const int* lmhi,
                               const amrex_real* dx, const amrex_real* dt, const int* level);
-
-    void cns_tag_denerror (const int* lo, const int* hi,
-                           char* tag, const int* tlo, const int* thi,
-                           amrex_real* rho, const int* rlo, const int* rhi,
-                           const void* flag, const int* flo, const int* fhi,
-                           const amrex_real* dengrad, const char* tagval, const char* clearval);
-
-
 #ifdef __cplusplus
 }
 #endif

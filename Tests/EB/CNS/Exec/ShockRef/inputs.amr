@@ -57,6 +57,9 @@ eb2.plane_normal = 0.7547095802227719  -0.6560590289905074  0.0   # slope: 49 de
 physics.gamma  = 1.6666666666666667
 physics.eos_mu = 41.57255
 
+cns.eos_gamma  = 1.6666666666666667
+cns.eos_mu = 41.57255
+
 physics.use_const_visc = 1
 physics.const_visc_mu = 1.21e-2
 physics.const_visc_ki = 0.0

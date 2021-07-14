@@ -1,6 +1,8 @@
 #ifndef CNS_H_
 #define CNS_H_
 
+#include <CNS_parm.H>
+#include <cns_prob_parm.H>
 #include <AMReX_AmrLevel.H>
 #include <AMReX_EBCellFlag.H>
 #include <AMReX_EBFluxRegister.H>
@@ -171,6 +173,14 @@ protected:
     static amrex::Real refine_dengrad;
 
     static amrex::Vector<amrex::RealBox> refine_boxes;
+
+    static amrex::Real gravity;
+
+public:
+    static Parm* h_parm;
+    static Parm* d_parm;
+    static ProbParm* h_prob_parm;
+    static ProbParm* d_prob_parm;
 };
 
 #endif
