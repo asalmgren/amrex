@@ -355,6 +355,7 @@ CNS::read_params ()
     pp.query("gravity", gravity);
 
     pp.query("eos_gamma", h_parm->eos_gamma);
+    pp.query("eos_mu"   , h_parm->eos_mu);
 
     h_parm->Initialize();
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
