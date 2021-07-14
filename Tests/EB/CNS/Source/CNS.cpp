@@ -490,7 +490,7 @@ CNS::estTimeStep ()
 
     Real estdt = std::numeric_limits<Real>::max();
 
-    // Reduce min operation 
+    // Reduce min operation
     ReduceOps<ReduceOpMin> reduce_op;
     ReduceData<Real> reduce_data(reduce_op);
     using ReduceTuple = typename decltype(reduce_data)::Type;
