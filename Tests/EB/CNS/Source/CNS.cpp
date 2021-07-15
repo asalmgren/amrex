@@ -514,7 +514,7 @@ CNS::estTimeStep ()
     } // mfi
 
     ReduceTuple host_tuple = reduce_data.value();
-    estdt = amrex::min(estdt, amrex::get<0>(host_tuple));
+    estdt = amrex::min(estdt,amrex::get<0>(host_tuple)); 
 
     estdt *= cfl;
     ParallelDescriptor::ReduceRealMin(estdt);

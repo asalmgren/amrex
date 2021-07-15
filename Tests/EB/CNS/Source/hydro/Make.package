@@ -1,3 +1,4 @@
+CEXE_headers += CNS_hydro_K.H
 
 F90EXE_sources += Hyp_gamma_MOL.F90
 F90EXE_sources += Hyp_gamma_MOL_EB.F90

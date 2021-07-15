@@ -130,6 +130,11 @@ protected:
     void compute_dSdt (const amrex::MultiFab& S, amrex::MultiFab& dSdt, amrex::Real dt,
                        amrex::EBFluxRegister* fr_as_crse, amrex::EBFluxRegister* fr_as_fine);
 
+    void compute_dSdt_box (const amrex::Box& bx,
+                           amrex::Array4<amrex::Real const>& Sfab,
+                           amrex::Array4<amrex::Real      >& dSdtfab,
+                           const std::array<FArrayBox*, AMREX_SPACEDIM>& flux);
+
     void printTotal () const;
 
     const amrex::MultiFab* volfrac;

@@ -8,6 +8,7 @@ CEXE_headers += CNS_F.H
 CEXE_headers += CNS_K.H
 
 CEXE_sources += CNS_advance.cpp
+CEXE_sources += CNS_advance_box.cpp
 CEXE_sources += CNS_derive.cpp
 CEXE_sources += CNS.cpp
 CEXE_sources += CNSBld.cpp

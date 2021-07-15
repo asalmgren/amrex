@@ -40,9 +40,16 @@ CNS::advance (Real time, Real dt, int /*iteration*/, int /*ncycle*/)
         fr_as_crse->reset();
     }
 
+    dSdt.setVal(0.);
+
     // RK2 stage 1
     FillPatch(*this, Sborder, NUM_GROW, time, State_Type, 0, NUM_STATE);
+
+    //amrex::Print() << " USING DT " << dt << std::endl;
+    //amrex::Print() << " S   " << Sborder[0] << std::endl;
     compute_dSdt(Sborder, dSdt, 0.5*dt, fr_as_crse, fr_as_fine);
+    //amrex::Print() << "DSDT " << dSdt[0] << std::endl;
+
     // U^* = U^n + dt*dUdt^n
     MultiFab::LinComb(S_new, 1.0, Sborder, 0, dt, dSdt, 0, 0, NUM_STATE, 0);
     computeTemp(S_new,0);
@@ -108,6 +115,7 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
 
                 if (flag.getType(amrex::grow(bx,1)) == FabType::regular)
                 {
+#if 0
                     cns_compute_dudt(BL_TO_FORTRAN_BOX(bx),
                                      BL_TO_FORTRAN_ANYD(dSdt[mfi]),
                                      BL_TO_FORTRAN_ANYD(S[mfi]),
@@ -115,6 +123,12 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
                                      BL_TO_FORTRAN_ANYD(flux[1]),
                                      BL_TO_FORTRAN_ANYD(flux[2]),
                                      dx, &dt,&level);
+#else
+
+                    Array4<Real const>    s_arr =    S.array(mfi);
+                    Array4<Real      > dsdt_arr = dSdt.array(mfi);
+                    compute_dSdt_box(bx,s_arr,dsdt_arr,{&flux[0],&flux[1],&flux[2]});
+#endif
 
                     if (fr_as_crse) {
                         fr_as_crse->CrseAdd(mfi,{&flux[0],&flux[1],&flux[2]},dx,dt,RunOn::Cpu);
