@@ -34,7 +34,9 @@ int       CNS::refine_max_dengrad_lev   = -1;
 Real      CNS::refine_dengrad           = 1.0e10;
 Vector<RealBox> CNS::refine_boxes;
 
-Real      CNS::gravity = 0.0;
+int       CNS::plm_iorder = 2;   // [1,2] 1: slopes are zero'd,  2: second order slopes
+Real      CNS::plm_theta  = 2.0; // [1,2] 1: minmod; 2: van Leer's MC
+Real      CNS::gravity    = 0.0;
 
 CNS::CNS ()
 {}

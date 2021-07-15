@@ -85,6 +85,13 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
     auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S.Factory());
     auto const& flags = fact.getMultiEBCellFlagFab();
 
+    iMultiFab cc_mask;
+    if (!fact.isAllRegular())
+    {
+        cc_mask.define(S.boxArray(), S.DistributionMap(), 1, 1);
+        cc_mask.BuildMask(geom.Domain(), geom.periodicity(), 1, 0, 0, 1);
+    }
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel
 #endif
@@ -115,20 +122,11 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
 
                 if (flag.getType(amrex::grow(bx,1)) == FabType::regular)
                 {
-#if 0
-                    cns_compute_dudt(BL_TO_FORTRAN_BOX(bx),
-                                     BL_TO_FORTRAN_ANYD(dSdt[mfi]),
-                                     BL_TO_FORTRAN_ANYD(S[mfi]),
-                                     BL_TO_FORTRAN_ANYD(flux[0]),
-                                     BL_TO_FORTRAN_ANYD(flux[1]),
-                                     BL_TO_FORTRAN_ANYD(flux[2]),
-                                     dx, &dt,&level);
-#else
 
                     Array4<Real const>    s_arr =    S.array(mfi);
                     Array4<Real      > dsdt_arr = dSdt.array(mfi);
+
                     compute_dSdt_box(bx,s_arr,dsdt_arr,{&flux[0],&flux[1],&flux[2]});
-#endif
 
                     if (fr_as_crse) {
                         fr_as_crse->CrseAdd(mfi,{&flux[0],&flux[1],&flux[2]},dx,dt,RunOn::Cpu);
@@ -149,28 +147,21 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
                         dm_as_fine.resize(amrex::grow(bx,1),ncomp);
                     }
 
-                    cns_eb_compute_dudt(BL_TO_FORTRAN_BOX(bx),
-                                        BL_TO_FORTRAN_ANYD(dSdt[mfi]),
-                                        BL_TO_FORTRAN_ANYD(S[mfi]),
-                                        BL_TO_FORTRAN_ANYD(flux[0]),
-                                        BL_TO_FORTRAN_ANYD(flux[1]),
-                                        BL_TO_FORTRAN_ANYD(flux[2]),
-                                        BL_TO_FORTRAN_ANYD(flag),
-                                        BL_TO_FORTRAN_ANYD((*volfrac)[mfi]),
-                                        BL_TO_FORTRAN_ANYD((*bndrycent)[mfi]),
-                                        BL_TO_FORTRAN_ANYD((*areafrac[0])[mfi]),
-                                        BL_TO_FORTRAN_ANYD((*areafrac[1])[mfi]),
-                                        BL_TO_FORTRAN_ANYD((*areafrac[2])[mfi]),
-                                        BL_TO_FORTRAN_ANYD((*facecent[0])[mfi]),
-                                        BL_TO_FORTRAN_ANYD((*facecent[1])[mfi]),
-                                        BL_TO_FORTRAN_ANYD((*facecent[2])[mfi]),
-                                        &as_crse,
-                                        BL_TO_FORTRAN_ANYD(*p_drho_as_crse),
-                                        BL_TO_FORTRAN_ANYD(*p_rrflag_as_crse),
-                                        &as_fine,
-                                        BL_TO_FORTRAN_ANYD(dm_as_fine),
-                                        BL_TO_FORTRAN_ANYD(level_mask[mfi]),
-                                        dx, &dt,&level);
+                    Array4<Real const>    s_arr =    S.array(mfi);
+                    Array4<Real      > dsdt_arr = dSdt.array(mfi);
+
+                    Array4<Real const> vf_arr = (*volfrac).array(mfi);
+
+                    AMREX_D_TERM(Array4<Real const> const& apx = areafrac[0]->const_array(mfi);,
+                                 Array4<Real const> const& apy = areafrac[1]->const_array(mfi);,
+                                 Array4<Real const> const& apz = areafrac[2]->const_array(mfi));
+                    AMREX_D_TERM(Array4<Real const> const& fcx = facecent[0]->const_array(mfi);,
+                                 Array4<Real const> const& fcy = facecent[1]->const_array(mfi);,
+                                 Array4<Real const> const& fcz = facecent[2]->const_array(mfi));
+
+                    compute_dSdt_box_eb(bx,s_arr,dsdt_arr,{&flux[0],&flux[1],&flux[2]},
+                                        vf_arr,AMREX_D_DECL(apx,apy,apz),AMREX_D_DECL(fcx,fcy,fcz),
+                                        flags.const_array(mfi),cc_mask.const_array(mfi));
 
                     if (fr_as_crse) {
                         fr_as_crse->CrseAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,

@@ -135,6 +135,20 @@ protected:
                            amrex::Array4<amrex::Real      >& dSdtfab,
                            const std::array<FArrayBox*, AMREX_SPACEDIM>& flux);
 
+    void compute_dSdt_box_eb (const amrex::Box& bx,
+                              amrex::Array4<amrex::Real const>& Sfab,
+                              amrex::Array4<amrex::Real      >& dSdtfab,
+                              const std::array<FArrayBox*, AMREX_SPACEDIM>& flux,
+                              amrex::Array4<amrex::Real const>& vfrac,
+                              AMREX_D_DECL(amrex::Array4<amrex::Real const> const& apx,
+                                           amrex::Array4<amrex::Real const> const& apy,
+                                           amrex::Array4<amrex::Real const> const& apz),
+                              AMREX_D_DECL(amrex::Array4<amrex::Real const> const& fcx,
+                                           amrex::Array4<amrex::Real const> const& fcy,
+                                           amrex::Array4<amrex::Real const> const& fcz),
+                              amrex::Array4<amrex::EBCellFlag const> flag,
+                              amrex::Array4<int               const> cc_mask);
+
     void printTotal () const;
 
     const amrex::MultiFab* volfrac;
@@ -169,6 +183,9 @@ protected:
     static int verbose;
     static amrex::IntVect hydro_tile_size;
     static amrex::Real cfl;
+
+    static int plm_iorder;
+    static amrex::Real plm_theta;
 
     static int do_reflux;
 

@@ -1,19 +1,35 @@
 
 #include <CNS.H>
 #include <CNS_hydro_K.H>
+#include <CNS_hydro_eb_K.H>
 
 #include <AMReX_EBFArrayBox.H>
 #include <AMReX_MultiCutFab.H>
 
+#if (AMREX_SPACEDIM == 2)
+#include <AMReX_EBMultiFabUtil_2D_C.H>
+#elif (AMREX_SPACEDIM == 3)
+#include <AMReX_EBMultiFabUtil_3D_C.H>
+#endif
+
 using namespace amrex;
 
 void
-CNS::compute_dSdt_box (const Box& bx, 
-                       Array4<Real const>& sfab, 
-                       Array4<Real      >& dsdtfab,
-                       const std::array<FArrayBox*, AMREX_SPACEDIM>& flux)
+CNS::compute_dSdt_box_eb (const Box& bx, 
+                          Array4<Real const>& sfab, 
+                          Array4<Real      >& dsdtfab,
+                          const std::array<FArrayBox*, AMREX_SPACEDIM>& flux,
+                          Array4<Real const>& vfrac,
+                          AMREX_D_DECL(Array4<Real const> const& apx,
+                                       Array4<Real const> const& apy,
+                                       Array4<Real const> const& apz),
+                          AMREX_D_DECL(Array4<Real const> const& fcx,
+                                       Array4<Real const> const& fcy,
+                                       Array4<Real const> const& fcz),
+                          Array4<EBCellFlag const> flag,
+                          Array4<int        const> ccm)
 {
-    BL_PROFILE("CNS::compute_dSdt__box()");
+    BL_PROFILE("CNS::compute_dSdt_box_eb()");
 
     const auto dx = geom.CellSizeArray();
     const auto dxinv = geom.InvCellSizeArray();
@@ -29,6 +45,10 @@ CNS::compute_dSdt_box (const Box& bx,
     AMREX_D_TERM(auto const& fxfab = flux[0]->array();,
                  auto const& fyfab = flux[1]->array();,
                  auto const& fzfab = flux[2]->array(););
+
+    AMREX_D_TERM(Array4<Real const> const& fx_arr = flux[0]->const_array();,
+                 Array4<Real const> const& fy_arr = flux[1]->const_array();,
+                 Array4<Real const> const& fz_arr = flux[2]->const_array());
 
         const Box& bxg2 = amrex::grow(bx,2);
         qtmp.resize(bxg2, nprim);
@@ -52,7 +72,7 @@ CNS::compute_dSdt_box (const Box& bx,
         amrex::ParallelFor(xslpbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            cns_slope_x(i, j, k, slope, q, plm_iorder, plm_theta);
+            cns_slope_eb_x(i, j, k, slope, q, flag, plm_iorder, plm_theta);
         });
         const Box& xflxbx = amrex::surroundingNodes(bx,cdir);
         amrex::ParallelFor(xflxbx,
@@ -67,8 +87,7 @@ CNS::compute_dSdt_box (const Box& bx,
         const Box& yslpbx = amrex::grow(bx, cdir, 1);
         amrex::ParallelFor(yslpbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            cns_slope_y(i, j, k, slope, q, plm_iorder, plm_theta);
+        { cns_slope_eb_y(i, j, k, slope, q, flag, plm_iorder, plm_theta);
         });
         const Box& yflxbx = amrex::surroundingNodes(bx,cdir);
         amrex::ParallelFor(yflxbx,
@@ -84,7 +103,7 @@ CNS::compute_dSdt_box (const Box& bx,
         amrex::ParallelFor(zslpbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            cns_slope_z(i, j, k, slope, q, plm_iorder, plm_theta);
+            cns_slope_eb_z(i, j, k, slope, q, flag, plm_iorder, plm_theta);
         });
         const Box& zflxbx = amrex::surroundingNodes(bx,cdir);
         amrex::ParallelFor(zflxbx,
@@ -98,10 +117,15 @@ CNS::compute_dSdt_box (const Box& bx,
         qeli.clear(); // don't need them anymore
         slopeeli.clear();
 
+        // "false" in the argument list means the data is not already on centroids
         amrex::ParallelFor(bx, ncons,
         [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
         {
-            cns_flux_to_dudt(i, j, k, n, dsdtfab, AMREX_D_DECL(fxfab,fyfab,fzfab), dxinv);
+            // This does the divergence but not the redistribution -- we will do that 
+            //      separately
+            eb_compute_divergence(i,j,k,n,dsdtfab,AMREX_D_DECL(fx_arr,fy_arr,fz_arr), 
+                                  ccm, flag, vfrac, AMREX_D_DECL(apx,apy,apz),
+                                  AMREX_D_DECL(fcx,fcy,fcz), dxinv, false);
         });
 
         if (gravity != Real(0.0)) {
