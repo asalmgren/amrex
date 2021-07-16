@@ -113,12 +113,12 @@ CNS::initData ()
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
         const Box& box = mfi.validbox();
-        auto sfab = S_new.array(mfi);
+        auto s_arr = S_new.array(mfi);
 
         amrex::ParallelFor(box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            cns_initdata(i, j, k, sfab, geomdata, *lparm, *lprobparm);
+            cns_initdata(i, j, k, s_arr, geomdata, *lparm, *lprobparm);
         });
     }
 
@@ -516,7 +516,7 @@ CNS::estTimeStep ()
     } // mfi
 
     ReduceTuple host_tuple = reduce_data.value();
-    estdt = amrex::min(estdt,amrex::get<0>(host_tuple)); 
+    estdt = amrex::min(estdt,amrex::get<0>(host_tuple));
 
     estdt *= cfl;
     ParallelDescriptor::ReduceRealMin(estdt);
@@ -537,6 +537,8 @@ CNS::computeTemp (MultiFab& State, int ng)
     auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(State.Factory());
     auto const& flags = fact.getMultiEBCellFlagFab();
 
+    Parm const* lparm = d_parm;
+
     // This will reset Eint and compute Temperature
 #ifdef AMREX_USE_OMP
 #pragma omp parallel
@@ -546,10 +548,14 @@ CNS::computeTemp (MultiFab& State, int ng)
         const Box& bx = mfi.growntilebox(ng);
 
         const auto& flag = flags[mfi];
+        auto s_arr = State.array(mfi);
 
         if (flag.getType(bx) != FabType::covered) {
-            cns_compute_temperature(BL_TO_FORTRAN_BOX(bx),
-                                    BL_TO_FORTRAN_ANYD(State[mfi]));
+            amrex::ParallelFor(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                cns_compute_temperature(i, j, k, s_arr, *lparm);
+            });
         }
     }
 }

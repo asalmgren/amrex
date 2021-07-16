@@ -8,6 +8,7 @@
 
 #include "cns_prob.H"
 #include "CNS_parm.H"
+#include "CNS_K.H"
 
 AMREX_GPU_HOST_DEVICE
 inline

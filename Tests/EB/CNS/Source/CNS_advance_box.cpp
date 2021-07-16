@@ -8,8 +8,8 @@
 using namespace amrex;
 
 void
-CNS::compute_dSdt_box (const Box& bx, 
-                       Array4<Real const>& sfab, 
+CNS::compute_dSdt_box (const Box& bx,
+                       Array4<Real const>& sfab,
                        Array4<Real      >& dsdtfab,
                        const std::array<FArrayBox*, AMREX_SPACEDIM>& flux)
 {
