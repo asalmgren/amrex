@@ -129,7 +129,7 @@ cns_slope_eb_y (int i, int j, int k,
             dlft0 = Real(0.5)*(q(i,j,k,QPRES)-q(i,j-1,k,QPRES))/q(i,j,k,QCS) - Real(0.5)*q(i,j,k,QRHO)*(q(i,j,k,QV) - q(i,j-1,k,QV));
             dlft1 = (q(i,j,k,QRHO)-q(i,j-1,k,QRHO)) - (q(i,j,k,QPRES) - q(i,j-1,k,QPRES))/q(i,j,k,QCS)*q(i,j,k,QCS);
             dlft2 = Real(0.5)*(q(i,j,k,QPRES)-q(i,j-1,k,QPRES))/q(i,j,k,QCS) + Real(0.5)*q(i,j,k,QRHO)*(q(i,j,k,QV) - q(i,j-1,k,QV));
-            dlft3 =q(i,j,k,QU) - q(i,j-1,k,QU); 
+            dlft3 =q(i,j,k,QU) - q(i,j-1,k,QU);
             dlft4 = q(i,j,k,QW) - q(i,j-1,k,QW);
         } else {
             dlft0 = Real(0.0);
@@ -206,7 +206,7 @@ cns_slope_eb_z (int i, int j, int k,
             drgt0 = Real(0.5)*(q(i,j,k+1,QPRES)-q(i,j,k,QPRES))/q(i,j,k,QCS) - Real(0.5)*q(i,j,k,QRHO)*(q(i,j,k+1,QW) - q(i,j,k,QW));
             drgt1 = (q(i,j,k+1,QRHO)-q(i,j,k,QRHO)) - (q(i,j,k+1,QPRES) - q(i,j,k,QPRES))/q(i,j,k,QCS)*q(i,j,k,QCS);
             drgt2 = Real(0.5)*(q(i,j,k+1,QPRES)-q(i,j,k,QPRES))/q(i,j,k,QCS) + Real(0.5)*q(i,j,k,QRHO)*(q(i,j,k+1,QW) - q(i,j,k,QW));
-            drgt3 =q(i,j,k+1,QU) - q(i,j,k,QU); 
+            drgt3 = q(i,j,k+1,QU) - q(i,j,k,QU);
             drgt4 = q(i,j,k+1,QV) - q(i,j,k,QV);
         } else {
             drgt0 = Real(0.0);

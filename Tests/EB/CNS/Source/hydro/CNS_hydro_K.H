@@ -86,7 +86,7 @@ cns_slope_x (int i, int j, int k,
         dq(i,j,k,3) = Real(0.);
         dq(i,j,k,4) = Real(0.);
     } else {
- 
+
         Real dlft = Real(0.5)*(q(i,j,k,QPRES)-q(i-1,j,k,QPRES))/q(i,j,k,QCS) - Real(0.5)*q(i,j,k,QRHO)*(q(i,j,k,QU) - q(i-1,j,k,QU));
         Real drgt = Real(0.5)*(q(i+1,j,k,QPRES)-q(i,j,k,QPRES))/q(i,j,k,QCS) - Real(0.5)*q(i,j,k,QRHO)*(q(i+1,j,k,QU) - q(i,j,k,QU));
         Real d0 = limiter(dlft, drgt, plm_theta);

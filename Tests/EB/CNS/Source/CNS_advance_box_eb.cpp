@@ -15,8 +15,8 @@
 using namespace amrex;
 
 void
-CNS::compute_dSdt_box_eb (const Box& bx, 
-                          Array4<Real const>& sfab, 
+CNS::compute_dSdt_box_eb (const Box& bx,
+                          Array4<Real const>& sfab,
                           Array4<Real      >& dsdtfab,
                           const std::array<FArrayBox*, AMREX_SPACEDIM>& flux,
                           Array4<Real const>& vfrac,
@@ -121,9 +121,9 @@ CNS::compute_dSdt_box_eb (const Box& bx,
         amrex::ParallelFor(bx, ncons,
         [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
         {
-            // This does the divergence but not the redistribution -- we will do that 
+            // This does the divergence but not the redistribution -- we will do that
             //      separately
-            eb_compute_divergence(i,j,k,n,dsdtfab,AMREX_D_DECL(fx_arr,fy_arr,fz_arr), 
+            eb_compute_divergence(i,j,k,n,dsdtfab,AMREX_D_DECL(fx_arr,fy_arr,fz_arr),
                                   ccm, flag, vfrac, AMREX_D_DECL(apx,apy,apz),
                                   AMREX_D_DECL(fcx,fcy,fcz), dxinv, false);
         });
