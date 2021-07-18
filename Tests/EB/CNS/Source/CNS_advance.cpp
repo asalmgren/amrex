@@ -1,6 +1,5 @@
 
 #include <CNS.H>
-#include <CNS_F.H>
 
 #include <AMReX_EBFArrayBox.H>
 #include <AMReX_MultiCutFab.H>
@@ -77,9 +76,6 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
     const Real* dx = geom.CellSize();
     const int ncomp = dSdt.nComp();
 
-    int as_crse = (fr_as_crse != nullptr);
-    int as_fine = (fr_as_fine != nullptr);
-
     MultiFab& cost = get_new_data(Cost_Type);
 
     auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S.Factory());
@@ -138,11 +134,6 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
                 }
                 else
                 {
-                    FArrayBox* p_drho_as_crse = (fr_as_crse) ?
-                        fr_as_crse->getCrseData(mfi) : &fab_drho_as_crse;
-                    const IArrayBox* p_rrflag_as_crse = (fr_as_crse) ?
-                        fr_as_crse->getCrseFlag(mfi) : &fab_rrflag_as_crse;
-
                     if (fr_as_fine) {
                         dm_as_fine.resize(amrex::grow(bx,1),ncomp);
                     }

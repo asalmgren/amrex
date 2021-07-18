@@ -31,7 +31,6 @@ CNS::compute_dSdt_box_eb (const Box& bx,
 {
     BL_PROFILE("CNS::compute_dSdt_box_eb()");
 
-    const auto dx = geom.CellSizeArray();
     const auto dxinv = geom.InvCellSizeArray();
     const int ncomp = NUM_STATE;
     const int neqns = 5;

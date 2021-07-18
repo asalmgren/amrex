@@ -1,6 +1,5 @@
 
 #include <CNS.H>
-#include <CNS_F.H>
 #include <CNS_derive.H>
 
 using namespace amrex;
@@ -114,12 +113,6 @@ CNS::variableSetUp ()
 
     Geometry const* gg = AMReX::top()->getDefaultGeometry();
 
-    cns_init_fort(phys_bc.lo(), phys_bc.hi(),
-                  PhysBCType::interior, PhysBCType::inflow, PhysBCType::outflow,
-                  PhysBCType::symmetry, PhysBCType::slipwall, PhysBCType::noslipwall,
-                  ParallelDescriptor::MyProc(),
-                  gg->ProbLo(), gg->ProbHi());
-
     bool state_data_extrap = false;
     bool store_in_checkpoint = true;
     desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
@@ -138,15 +131,18 @@ CNS::variableSetUp ()
     cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_e";
     cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Temp";
 
+    StateDescriptor::BndryFunc bndryfunc(cns_bcfill);
+    bndryfunc.setRunOnGPU(true);
+
     desc_lst.setComponent(State_Type,
                           Density,
                           name,
                           bcs,
-                          BndryFunc(cns_denfill,cns_hypfill));
+                          bndryfunc);
 
     desc_lst.addDescriptor(Cost_Type, IndexType::TheCellType(), StateDescriptor::Point,
                            0,1, &pc_interp);
-    desc_lst.setComponent(Cost_Type, 0, "Cost", bc, BndryFunc(cns_nullfill,cns_nullfill));
+    desc_lst.setComponent(Cost_Type, 0, "Cost", bc, bndryfunc);
 
     num_state_data_types = desc_lst.size();
 

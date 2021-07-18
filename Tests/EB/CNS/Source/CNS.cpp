@@ -1,6 +1,5 @@
 
 #include <CNS.H>
-#include <CNS_F.H>
 #include <CNS_K.H>
 #include <CNS_tagging.H>
 #include <CNS_parm.H>
@@ -34,9 +33,13 @@ int       CNS::refine_max_dengrad_lev   = -1;
 Real      CNS::refine_dengrad           = 1.0e10;
 Vector<RealBox> CNS::refine_boxes;
 
-int       CNS::plm_iorder = 2;   // [1,2] 1: slopes are zero'd,  2: second order slopes
-Real      CNS::plm_theta  = 2.0; // [1,2] 1: minmod; 2: van Leer's MC
+bool      CNS::do_visc    = false; // diffusion is off by default
+int       CNS::plm_iorder = 2;     // [1,2] 1: slopes are zero'd,  2: second order slopes
+Real      CNS::plm_theta  = 2.0;   // [1,2] 1: minmod; 2: van Leer's MC
 Real      CNS::gravity    = 0.0;
+
+int       CNS::eb_weights_type = 0;   // [0,1,2,3] 0: weights are all 1
+int       CNS::do_reredistribution = 1;
 
 CNS::CNS ()
 {}
@@ -316,7 +319,7 @@ CNS::post_restart ()
 }
 
 void
-CNS::errorEst (TagBoxArray& tags, int, int, Real time, int, int)
+CNS::errorEst (TagBoxArray& tags, int, int, Real /*time*/, int, int)
 {
     BL_PROFILE("CNS::errorEst()");
 
@@ -407,6 +410,8 @@ CNS::read_params ()
 
     pp.query("do_reflux", do_reflux);
 
+    pp.query("do_visc", do_visc);
+
     pp.query("refine_cutcells", refine_cutcells);
 
     pp.query("refine_max_dengrad_lev", refine_max_dengrad_lev);
@@ -428,6 +433,19 @@ CNS::read_params ()
 
     h_parm->Initialize();
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
+
+    // eb_weights_type: 
+    //   0 -- weights = 1
+    //   1 -- use_total_energy_as_eb_weights-
+    //   2 -- use_mass_as_eb_weights
+    //   3 -- use_volfrac_as_eb_weights
+    pp.query("eb_weights_type", eb_weights_type);
+    if (eb_weights_type < 0 || eb_weights_type > 3) 
+        amrex::Abort("CNS: eb_weights_type must be 0,1,2 or 3");
+
+    pp.query("do_reredistribution", do_reredistribution);
+    if (do_reredistribution != 0 && do_reredistribution != 1) 
+        amrex::Abort("CNS: do_reredistibution must be 0 or 1");
 }
 
 void

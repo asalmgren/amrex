@@ -66,6 +66,6 @@ physics.const_visc_ki = 0.0
 physics.const_lambda  = 1.7e3 
 
 cns.dim = 2
-cns.use_total_energy_as_eb_weights = 1
+cns.eb_weights_type = 1
 
 amrex.fpe_trap_invalid=1

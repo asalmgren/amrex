@@ -1,6 +1,7 @@
 
 #include <CNS.H>
 #include <CNS_hydro_K.H>
+#include <CNS_diffusion_K.H>
 
 #include <AMReX_EBFArrayBox.H>
 #include <AMReX_MultiCutFab.H>
@@ -15,14 +16,13 @@ CNS::compute_dSdt_box (const Box& bx,
 {
     BL_PROFILE("CNS::compute_dSdt__box()");
 
-    const auto dx = geom.CellSizeArray();
     const auto dxinv = geom.InvCellSizeArray();
-    const int ncomp = NUM_STATE;
     const int neqns = 5;
     const int ncons = 7;
     const int nprim = 8;
+    const int ncoef = 3;
 
-    FArrayBox qtmp, slopetmp;
+    FArrayBox qtmp, slopetmp, diff_coeff;
 
     Parm const* lparm = d_parm;
 
@@ -35,11 +35,29 @@ CNS::compute_dSdt_box (const Box& bx,
         Elixir qeli = qtmp.elixir();
         auto const& q = qtmp.array();
 
+        Elixir dcoeff_eli;
+
+        if (do_visc == 1) 
+        {
+           diff_coeff.resize(bxg2, ncoef);
+           dcoeff_eli = diff_coeff.elixir();
+        }
+
         amrex::ParallelFor(bxg2,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             cns_ctoprim(i, j, k, sfab, q, *lparm);
         });
+
+        if (do_visc == 1)
+        {
+           auto const& coefs = diff_coeff.array();
+           amrex::ParallelFor(bxg2,
+           [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+           {
+               cns_diffcoef(i, j, k, q, coefs, *lparm);
+           });
+        }
 
         const Box& bxg1 = amrex::grow(bx,1);
         slopetmp.resize(bxg1,neqns);
@@ -62,6 +80,16 @@ CNS::compute_dSdt_box (const Box& bx,
             for (int n = neqns; n < ncons; ++n) fxfab(i,j,k,n) = Real(0.0);
         });
 
+        if (do_visc == 1)
+        {
+           auto const& coefs = diff_coeff.array();
+           amrex::ParallelFor(xflxbx,
+           [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+           {
+               cns_diff_x(i, j, k, q, coefs, dxinv, fxfab, *lparm);
+           });
+        }
+
         // y-direction
         cdir = 1;
         const Box& yslpbx = amrex::grow(bx, cdir, 1);
@@ -77,6 +105,16 @@ CNS::compute_dSdt_box (const Box& bx,
             cns_riemann_y(i, j, k, fyfab, slope, q, *lparm);
             for (int n = neqns; n < ncons; ++n) fyfab(i,j,k,n) = Real(0.0);
         });
+
+        if(do_visc == 1)
+        {
+           auto const& coefs = diff_coeff.array();
+           amrex::ParallelFor(yflxbx,
+           [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+           {
+               cns_diff_y(i, j, k, q, coefs, dxinv, fyfab, *lparm);
+           });
+        }
 
         // z-direction
         cdir = 2;
@@ -94,9 +132,24 @@ CNS::compute_dSdt_box (const Box& bx,
             for (int n = neqns; n < ncons; ++n) fzfab(i,j,k,n) = Real(0.0);
         });
 
+        if(do_visc == 1)
+        {
+           auto const& coefs = diff_coeff.array();
+           amrex::ParallelFor(zflxbx,
+           [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+           {
+               cns_diff_z(i, j, k, q, coefs, dxinv, fzfab, *lparm);
+           });
+        }
+
         // don't have to do this, but we could
         qeli.clear(); // don't need them anymore
         slopeeli.clear();
+
+        if (do_visc == 1) {
+           dcoeff_eli.clear();
+        }
+
 
         amrex::ParallelFor(bx, ncons,
         [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept

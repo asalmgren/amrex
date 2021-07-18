@@ -9,7 +9,6 @@ module probdata_module
   real(rt), save :: interior_p = 1.0d6
   !
   real(rt), save :: inflow_state(nvar)
-  real(rt), save :: interior_state(nvar)
 end module probdata_module
 
 
@@ -35,36 +34,5 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
   inflow_state(ueint) = rhoe
   inflow_state(utemp) = inflow_T
 
-  rhoe = interior_p / (gamma-1.d0)
-  rho = rhoe/(cv*interior_T)
-  interior_state(urho) = rho
-  interior_state(umx) = 0.d0
-  interior_state(umy) = 0.d0
-  interior_state(umz) = 0.d0
-  interior_state(ueden) = rhoe
-  interior_state(ueint) = rhoe
-  interior_state(utemp) = interior_T
 end subroutine amrex_probinit
 
-
-subroutine cns_initdata(level, time, lo, hi, u, ulo, uhi, dx, prob_lo) bind(C, name="cns_initdata")
-  use amrex_fort_module, only : rt => amrex_real
-  use cns_physics_module, only : gamma, cv
-  use cns_module, only : nvar
-  use probdata_module, only : interior_state
-  implicit none
-  integer, intent(in) :: level, lo(3), hi(3), ulo(3), uhi(3)
-  real(rt), intent(in) :: time
-  real(rt), intent(inout) :: u(ulo(1):uhi(1), ulo(2):uhi(2), ulo(3):uhi(3),nvar)
-  real(rt), intent(in) :: dx(3), prob_lo(3)
-
-  integer :: i,j,k
-
-  do k = lo(3), hi(3)
-     do j = lo(2), hi(2)
-        do i = lo(1), hi(1)
-           u(i,j,k,:) = interior_state
-        end do
-     end do
-  end do
-end subroutine cns_initdata

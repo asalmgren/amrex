@@ -184,8 +184,13 @@ protected:
     static amrex::IntVect hydro_tile_size;
     static amrex::Real cfl;
 
+    static bool do_visc;
+
     static int plm_iorder;
     static amrex::Real plm_theta;
+
+    static int eb_weights_type;
+    static int do_reredistribution;
 
     static int do_reflux;
 
@@ -204,5 +209,11 @@ public:
     static ProbParm* h_prob_parm;
     static ProbParm* d_prob_parm;
 };
+
+void cns_bcfill (amrex::Box const& bx, amrex::FArrayBox& data,
+                 const int dcomp, const int numcomp,
+                 amrex::Geometry const& geom, const amrex::Real time,
+                 const amrex::Vector<amrex::BCRec>& bcr, const int bcomp,
+                 const int scomp);
 
 #endif
