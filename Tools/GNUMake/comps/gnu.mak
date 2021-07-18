@@ -94,7 +94,9 @@ ifeq ($(WARN_ALL),TRUE)
 
   ifneq ($(USE_CUDA),TRUE)
     # With -Wpedantic I got 650 MB of warnings
-    warning_flags += -Wpedantic
+    ifneq ($(WARN_PEDANTIC),FALSE)
+      warning_flags += -Wpedantic
+    endif
   endif
 
   ifeq ($(gcc_major_ge_6),1)

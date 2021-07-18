@@ -1,3 +1,4 @@
+#include "CNS.H"
 
 #include <AMReX_FArrayBox.H>
 #include <AMReX_Geometry.H>
@@ -7,9 +8,11 @@ using namespace amrex;
 
 struct CnsFillExtDir
 {
+    Real* inflow_state = nullptr;
+
     AMREX_GPU_DEVICE
     void operator() (const IntVect& iv, Array4<Real> const& dest,
-                     const int dcomp, const int /*numcomp*/,
+                     const int dcomp, const int numcomp,
                      GeometryData const& /*geom*/, const Real /*time*/,
                      const BCRec* /*bcr*/, const int /*bcomp*/,
                      const int /*orig_comp*/) const
@@ -17,7 +20,9 @@ struct CnsFillExtDir
             int i = iv[0];
             int j = iv[1];
             int k = iv[2];
-            dest(i,j,k,dcomp) = inflow_state(i,j,k,dcomp);
+            for (int n = 0; n < numcomp; ++n) {
+                dest(i,j,k,dcomp+n) = inflow_state[dcomp+n];
+            }
         }
 };
 
@@ -32,6 +37,6 @@ void cns_bcfill (Box const& bx, FArrayBox& data,
                  const Vector<BCRec>& bcr, const int bcomp,
                  const int scomp)
 {
-    GpuBndryFuncFab<CnsFillExtDir> gpu_bndry_func(CnsFillExtDir{});
+    GpuBndryFuncFab<CnsFillExtDir> gpu_bndry_func(CnsFillExtDir{CNS::h_prob_parm->inflow_state});
     gpu_bndry_func(bx,data,dcomp,numcomp,geom,time,bcr,bcomp,scomp);
 }

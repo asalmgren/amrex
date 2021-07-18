@@ -108,6 +108,13 @@ public:
 
     static int numGrow() { return NUM_GROW; };
 
+    static int numState () { return NUM_STATE; }
+
+    enum StateVariable {
+        Density = 0, Xmom, Ymom, Zmom, Eden, Eint, Temp,
+        NUM_STATE
+    };
+
 protected:
 
     static void read_params ();
@@ -166,10 +173,6 @@ protected:
     static constexpr int level_mask_physbnd    = 3; // outside domain
 
     static constexpr int NUM_GROW = 5;
-    enum StateVariable {
-        Density = 0, Xmom, Ymom, Zmom, Eden, Eint, Temp,
-        NUM_STATE
-    };
 
     enum StateDataType {
         State_Type = 0,
