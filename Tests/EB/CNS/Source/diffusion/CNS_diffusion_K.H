@@ -53,7 +53,7 @@ cns_diff_x (int i, int j, int k,
     fx(i,j,k,UMY)   += -tauxy;
     fx(i,j,k,UMZ)   += -tauxz;
     fx(i,j,k,UEDEN) += -0.5*( (q(i,j,k,QU)+q(i-1,j,k,QU))*tauxx+
-                              (q(i,j,k,QV)+q(i-1,j,k,QV))*tauxy+ 
+                              (q(i,j,k,QV)+q(i-1,j,k,QV))*tauxy+
                               (q(i,j,k,QW)+q(i-1,j,k,QW))*tauxz+
                               (coeffs(i,j,k,CLAM) +coeffs(i-1,j,k,CLAM))*dTdx );
 
@@ -90,7 +90,7 @@ cns_diff_y (int i, int j, int k, amrex::Array4<amrex::Real const> const& q,
     fy(i,j,k,UMY)   += -tauyy;
     fy(i,j,k,UMZ)   += -tauyz;
     fy(i,j,k,UEDEN) += -0.5*( (q(i,j,k,QU)+q(i,j-1,k,QU))*tauxy
-                             +(q(i,j,k,QV)+q(i,j-1,k,QV))*tauyy 
+                             +(q(i,j,k,QV)+q(i,j-1,k,QV))*tauyy
                              +(q(i,j,k,QW)+q(i,j-1,k,QW))*tauyz
                              +(coeffs(i,j,k,CLAM) +coeffs(i,j-1,k,CLAM))*dTdy );
 

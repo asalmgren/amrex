@@ -37,7 +37,7 @@ CNS::compute_dSdt_box (const Box& bx,
 
         Elixir dcoeff_eli;
 
-        if (do_visc == 1) 
+        if (do_visc == 1)
         {
            diff_coeff.resize(bxg2, ncoef);
            dcoeff_eli = diff_coeff.elixir();
