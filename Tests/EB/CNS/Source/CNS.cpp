@@ -434,17 +434,17 @@ CNS::read_params ()
     h_parm->Initialize();
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
 
-    // eb_weights_type: 
+    // eb_weights_type:
     //   0 -- weights = 1
     //   1 -- use_total_energy_as_eb_weights-
     //   2 -- use_mass_as_eb_weights
     //   3 -- use_volfrac_as_eb_weights
     pp.query("eb_weights_type", eb_weights_type);
-    if (eb_weights_type < 0 || eb_weights_type > 3) 
+    if (eb_weights_type < 0 || eb_weights_type > 3)
         amrex::Abort("CNS: eb_weights_type must be 0,1,2 or 3");
 
     pp.query("do_reredistribution", do_reredistribution);
-    if (do_reredistribution != 0 && do_reredistribution != 1) 
+    if (do_reredistribution != 0 && do_reredistribution != 1)
         amrex::Abort("CNS: do_reredistibution must be 0 or 1");
 }
 
