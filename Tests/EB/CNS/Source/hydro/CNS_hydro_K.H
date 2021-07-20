@@ -351,17 +351,17 @@ riemann (const amrex::Real gamma, const amrex::Real smallp, const amrex::Real /*
 AMREX_GPU_DEVICE
 inline
 void
-compute_hyp_wallflux (const amrex::Real rho, const amrex::Real u, const amrex::Real v,  const amrex::Real w, 
-                      const amrex::Real p, const amrex::Real axm, const amrex::Real axp, 
+compute_hyp_wallflux (const amrex::Real rho, const amrex::Real u, const amrex::Real v,  const amrex::Real w,
+                      const amrex::Real p, const amrex::Real axm, const amrex::Real axp,
                       const amrex::Real aym, const amrex::Real ayp, const amrex::Real azm, const amrex::Real azp,
                       amrex::GpuArray<amrex::Real,NCONS>  fluxw, Parm const* parm) noexcept
 {
     using amrex::Real;
-    
+
     Real apnorm = std::sqrt( (axm-axp)*(axm-axp) + (aym-ayp)*(aym-ayp) + (azm-azp)*(azm-azp) );
     Real apnorminv = 1./apnorm;
 
-    Real un = u*(axm-axp)*apnorminv + v*(aym-ayp)*apnorminv + w*(azm-azp)*apnorminv ;
+    Real un = u*(axm-axp)*apnorminv + v*(aym-ayp)*apnorminv + w*(azm-azp)*apnorminv;
 
     Real momfluxn, momfluxt1, momfluxt2;
 
@@ -372,7 +372,6 @@ compute_hyp_wallflux (const amrex::Real rho, const amrex::Real u, const amrex::R
     fluxw[UMX] =  (axm-axp) * momfluxn;
     fluxw[UMY] =  (aym-ayp) * momfluxn;
     fluxw[UMZ] =  (azm-azp) * momfluxn;
-
 }
 }
 

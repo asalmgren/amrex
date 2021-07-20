@@ -32,7 +32,7 @@ CNS::compute_dSdt_box_eb (const Box& bx,
                           int as_crse,
                           Array4<Real            > const& drho_as_crse,
                           Array4<int             > const& rrflag_as_crse,
-                          int as_fine, 
+                          int as_fine,
                           Array4<Real            > const& dm_as_fine,
                           Array4<int        const> const& lev_mask,
                           Real dt)
@@ -153,7 +153,7 @@ CNS::compute_dSdt_box_eb (const Box& bx,
     const Box& yslpbx = amrex::grow(bxg3, cdir, 1);
     amrex::ParallelFor(yslpbx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-    { 
+    {
         cns_slope_eb_y(i, j, k, slope, q, flag, plm_iorder, plm_theta);
     });
 
@@ -223,7 +223,7 @@ CNS::compute_dSdt_box_eb (const Box& bx,
     auto const& fx_out_arr = flux[0]->array();
     auto const& fy_out_arr = flux[1]->array();
     auto const& fz_out_arr = flux[2]->array();
-    
+
     int bx_ilo = bx.smallEnd()[0];
     int bx_ihi = bx.bigEnd()[0];
     int bx_jlo = bx.smallEnd()[1];

@@ -3,9 +3,9 @@
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void eb_compute_div (int i, int j, int k, int n, bool valid_cell, Array4<Real> const& divu,
                      Array4<Real const> const& u, Array4<Real const> const& v,
-                     Array4<Real const> const& w, 
+                     Array4<Real const> const& w,
                      Array4<Real      > const& fx, Array4<Real     > const& fy,
-                     Array4<Real      > const& fz, 
+                     Array4<Real      > const& fz,
                      Array4<int const> const& ccm,
                      Array4<EBCellFlag const> const& flag, Array4<Real const> const& vfrc,
                      Array4<Real const> const& apx, Array4<Real const> const& apy,

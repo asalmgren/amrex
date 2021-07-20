@@ -50,7 +50,7 @@ CNS::cns_flux_redistribute (const Box& bx,
         if (eb_weights_type == 0)
             { redistwgt(i,j,k) = 1.0; }
         else if (eb_weights_type == 1)
-            { redistwgt(i,j,k) = q(i,j,k,QRHO)*( q(i,j,k,QEINT) + 
+            { redistwgt(i,j,k) = q(i,j,k,QRHO)*( q(i,j,k,QEINT) +
                             0.5*(q(i,j,k,QU)*q(i,j,k,QU) + q(i,j,k,QV)*q(i,j,k,QV) + q(i,j,k,QW)*q(i,j,k,QW)) ); }
         else if (eb_weights_type == 2)
             { redistwgt(i,j,k) = q(i,j,k,QRHO); }
@@ -78,7 +78,7 @@ CNS::cns_flux_redistribute (const Box& bx,
             delm(i,j,k,n) = -vfrac(i,j,k)*optmp(i,j,k,n);
         } else {
             delm(i,j,k,n) = 0.;
-        } 
+        }
     });
 
     amrex::ParallelFor(bxg1, NEQNS,
@@ -111,7 +111,7 @@ CNS::cns_flux_redistribute (const Box& bx,
             bool as_fine_ghost_cell = false;  // ghost cells just outside valid region
             if (as_fine)
             {
-               as_fine_valid_cell = 
+               as_fine_valid_cell =
                 ( (i >= bx_ilo) && (i <= bx_ihi) && (j >= bx_jlo) && (j <= bx_jhi) && (k >= bx_klo) && (k <= bx_khi) );
                as_fine_ghost_cell = (levmsk(i,j,k) == levmsk_notcovered); // not covered by other grids
             }
@@ -128,8 +128,8 @@ CNS::cns_flux_redistribute (const Box& bx,
                       Real drho = delm(i,j,k,n)*wtot*redistwgt(iii,jjj,kkk);
                       optmp(iii,jjj,kkk,n) += drho;
 
-                      valid_dst_cell = ( (iii >= bx_ilo) && (iii <= bx_ihi) && 
-                                         (jjj >= bx_jlo) && (jjj <= bx_jhi) && 
+                      valid_dst_cell = ( (iii >= bx_ilo) && (iii <= bx_ihi) &&
+                                         (jjj >= bx_jlo) && (jjj <= bx_jhi) &&
                                          (kkk >= bx_klo) && (kkk <= bx_khi) );
 
                       if (as_crse_crse_cell)

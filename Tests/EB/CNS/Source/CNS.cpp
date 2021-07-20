@@ -428,9 +428,9 @@ CNS::read_params ()
         }
     } else {
        use_const_visc = true;
-       h_parm->const_visc_mu = 0.0; 
-       h_parm->const_visc_ki = 0.0; 
-       h_parm->const_lambda  = 0.0; 
+       h_parm->const_visc_mu = 0.0;
+       h_parm->const_visc_ki = 0.0;
+       h_parm->const_lambda  = 0.0;
     }
 
     pp.query("refine_cutcells", refine_cutcells);

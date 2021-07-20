@@ -65,10 +65,10 @@ cns_diff_eb_x (int i, int j, int k,
 
     Real  whi = weights[jhip-jhim];
     Real  wlo = weights[jlop-jlom];
-    Real  dudy = (0.5*dxinv[1]) * ((q(i  ,jhip,k,QU)-q(i  ,jhim,k,QU))*whi 
-                                    +(q(i-1,jlop,k,QU)-q(i-1,jlom,k,QU))*wlo);
-    Real  dvdy = (0.5*dxinv[1]) * ((q(i  ,jhip,k,QV)-q(i  ,jhim,k,QV))*whi 
-                                    +(q(i-1,jlop,k,QV)-q(i-1,jlom,k,QV))*wlo);
+    Real  dudy = (0.5*dxinv[1]) * ((q(i  ,jhip,k,QU)-q(i  ,jhim,k,QU))*whi
+                                  +(q(i-1,jlop,k,QU)-q(i-1,jlom,k,QU))*wlo);
+    Real  dvdy = (0.5*dxinv[1]) * ((q(i  ,jhip,k,QV)-q(i  ,jhim,k,QV))*whi
+                                  +(q(i-1,jlop,k,QV)-q(i-1,jlom,k,QV))*wlo);
 
     int  khip = k + (flag(i  ,j,k).isConnected(0,0, 1) ? 1 : 0 );
     int  khim = k - (flag(i  ,j,k).isConnected(0,0,-1) ? 1 : 0 );
@@ -77,10 +77,10 @@ cns_diff_eb_x (int i, int j, int k,
 
          whi = weights[khip-khim];
          wlo = weights[klop-klom];
-    Real  dudz = (0.5*dxinv[2]) * ((q(i  ,j,khip,QU)-q(i  ,j,khim,QU))*whi 
-                                    +(q(i-1,j,klop,QU)-q(i-1,j,klom,QU))*wlo);
-    Real  dwdz = (0.5*dxinv[2]) * ((q(i  ,j,khip,QW)-q(i  ,j,khim,QW))*whi 
-                                    +(q(i-1,j,klop,QW)-q(i-1,j,klom,QW))*wlo);
+    Real  dudz = (0.5*dxinv[2]) * ((q(i  ,j,khip,QU)-q(i  ,j,khim,QU))*whi
+                                  +(q(i-1,j,klop,QU)-q(i-1,j,klom,QU))*wlo);
+    Real  dwdz = (0.5*dxinv[2]) * ((q(i  ,j,khip,QW)-q(i  ,j,khim,QW))*whi
+                                  +(q(i-1,j,klop,QW)-q(i-1,j,klom,QW))*wlo);
 
 
     Real  divu = dudx + dvdy + dwdz;
@@ -124,10 +124,10 @@ cns_diff_eb_y (int i, int j, int k, amrex::Array4<amrex::Real const> const& q,
 
     Real  whi = weights[ihip-ihim];
     Real  wlo = weights[ilop-ilom];
-    Real  dudx = (0.5*dxinv[0]) * ((q(ihip,j  ,k,QU)-q(ihim,j  ,k,QU))*whi 
-                                    +(q(ilop,j-1,k,QU)-q(ilom,j-1,k,QU))*wlo);
-    Real  dvdx = (0.5*dxinv[0]) * ((q(ihip,j  ,k,QV)-q(ihim,j  ,k,QV))*whi 
-                                    +(q(ilop,j-1,k,QV)-q(ilom,j-1,k,QV))*wlo);
+    Real  dudx = (0.5*dxinv[0]) * ((q(ihip,j  ,k,QU)-q(ihim,j  ,k,QU))*whi
+                                  +(q(ilop,j-1,k,QU)-q(ilom,j-1,k,QU))*wlo);
+    Real  dvdx = (0.5*dxinv[0]) * ((q(ihip,j  ,k,QV)-q(ihim,j  ,k,QV))*whi
+                                  +(q(ilop,j-1,k,QV)-q(ilom,j-1,k,QV))*wlo);
 
     int  khip = k + (flag(i  ,j,k).isConnected(0,0, 1) ? 1 : 0 );
     int  khim = k - (flag(i  ,j,k).isConnected(0,0,-1) ? 1 : 0 );
@@ -136,10 +136,10 @@ cns_diff_eb_y (int i, int j, int k, amrex::Array4<amrex::Real const> const& q,
 
           whi = weights[khip-khim];
           wlo = weights[klop-klom];
-    Real  dvdz = (0.5*dxinv[2]) * ((q(i,j  ,khip,QV)-q(i,j  ,khim,QV))*whi 
-                                    +(q(i,j-1,klop,QV)-q(i,j-1,klom,QV))*wlo);
-    Real  dwdz = (0.5*dxinv[2]) * ((q(i,j  ,khip,QW)-q(i,j  ,khim,QW))*whi 
-                                    +(q(i,j-1,klop,QW)-q(i,j-1,klom,QW))*wlo) ;
+    Real  dvdz = (0.5*dxinv[2]) * ((q(i,j  ,khip,QV)-q(i,j  ,khim,QV))*whi
+                                  +(q(i,j-1,klop,QV)-q(i,j-1,klom,QV))*wlo);
+    Real  dwdz = (0.5*dxinv[2]) * ((q(i,j  ,khip,QW)-q(i,j  ,khim,QW))*whi
+                                  +(q(i,j-1,klop,QW)-q(i,j-1,klom,QW))*wlo) ;
 
 
     Real  divu = dudx + dvdy + dwdz;
@@ -185,10 +185,10 @@ cns_diff_eb_z (int i, int j, int k,
 
     Real   whi = weights[ihip-ihim];
     Real   wlo = weights[ilop-ilom];
-    Real   dudx = (0.5*dxinv[0]) * ((q(ihip,j,k  ,QU)-q(ihim,j,k  ,QU))*whi 
-                                     +(q(ilop,j,k-1,QU)-q(ilom,j,k-1,QU))*wlo) ;
-     Real  dwdx = (0.5*dxinv[0]) * ((q(ihip,j,k  ,QW)-q(ihim,j,k  ,QW))*whi 
-                                     +(q(ilop,j,k-1,QW)-q(ilom,j,k-1,QW))*wlo) ;
+    Real   dudx = (0.5*dxinv[0]) * ((q(ihip,j,k  ,QU)-q(ihim,j,k  ,QU))*whi
+                                   +(q(ilop,j,k-1,QU)-q(ilom,j,k-1,QU))*wlo) ;
+     Real  dwdx = (0.5*dxinv[0]) * ((q(ihip,j,k  ,QW)-q(ihim,j,k  ,QW))*whi
+                                   +(q(ilop,j,k-1,QW)-q(ilom,j,k-1,QW))*wlo) ;
 
 
     int  jhip = j + (flag(i  ,j,k).isConnected(0, 1,0) ? 1 : 0 );
@@ -198,10 +198,10 @@ cns_diff_eb_z (int i, int j, int k,
 
            whi = weights[jhip-jhim];
            wlo = weights[jlop-jlom];
-    Real   dvdy = (0.5*dxinv[1]) * ((q(i,jhip,k  ,QV)-q(i,jhim,k  ,QV))*whi 
-                                     +(q(i,jlop,k-1,QV)-q(i,jlom,k-1,QV))*wlo) ;
-     Real  dwdy = (0.5*dxinv[1]) *  ((q(i,jhip,k  ,QW)-q(i,jhim,k  ,QW))*whi 
-                                      +(q(i,jlop,k-1,QW)-q(i,jlom,k-1,QW))*wlo) ;
+    Real   dvdy = (0.5*dxinv[1]) * ((q(i,jhip,k  ,QV)-q(i,jhim,k  ,QV))*whi
+                                   +(q(i,jlop,k-1,QV)-q(i,jlom,k-1,QV))*wlo);
+    Real  dwdy = (0.5*dxinv[1]) *  ((q(i,jhip,k  ,QW)-q(i,jhim,k  ,QW))*whi
+                                   +(q(i,jlop,k-1,QW)-q(i,jlom,k-1,QW))*wlo);
 
 
 

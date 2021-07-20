@@ -84,16 +84,6 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
     auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S.Factory());
     auto const& flags = fact.getMultiEBCellFlagFab();
 
-    iMultiFab cc_mask;
-    if (!fact.isAllRegular())
-    {
-        // We require 3 ghost cells because ccm is used in the transverse interpolation
-        //    of fluxes from face centers to face centroids; this happens on the box 
-        //    grown by 2 in order to then do redistribution
-        cc_mask.define(S.boxArray(), S.DistributionMap(), 1, 3);
-        cc_mask.BuildMask(geom.Domain(), geom.periodicity(), 1, 0, 0, 1);
-    }
-
 #ifdef AMREX_USE_OMP
 #pragma omp parallel
 #endif
