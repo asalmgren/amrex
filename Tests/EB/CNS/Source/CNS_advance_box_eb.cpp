@@ -242,11 +242,11 @@ CNS::compute_dSdt_box_eb (const Box& bx,
         // This does the divergence but not the redistribution -- we will do that later
        bool valid = (i >= bx_ilo && i <= bx_ihi && j >= bx_jlo && j <= bx_jhi &&
                      k >= bx_klo && k <= bx_khi);
-       eb_compute_div(i,j,k,n,valid,divc_arr,
+       eb_compute_div(i,j,k,n,valid,q,divc_arr,
                       fx_in_arr ,fy_in_arr ,fz_in_arr,
                       fx_out_arr,fy_out_arr,fz_out_arr,
                       lev_mask, flag, vfrac, apx, apy, apz,
-                      fcx, fcy, fcz, dxinv, false);
+                      fcx, fcy, fcz, dxinv, *lparm);
     });
 
     auto const& optmp_arr = optmp.array();
@@ -254,8 +254,8 @@ CNS::compute_dSdt_box_eb (const Box& bx,
     auto const& redistwgt_arr = redistwgt.array();
 
     // Now do redistribution
-    cns_flux_redistribute(bx,sfab,dsdtfab,divc_arr, optmp_arr,del_m_arr,redistwgt_arr,vfrac,flag,
-                          as_crse, drho_as_crse, rrflag_as_crse, as_fine, dm_as_fine, lev_mask, dt);
+    cns_flux_redistribute(bx,sfab,dsdtfab,divc_arr,optmp_arr,del_m_arr,redistwgt_arr,vfrac,flag,
+                          as_crse, drho_as_crse,rrflag_as_crse, as_fine, dm_as_fine, lev_mask, dt);
 
     if (gravity != Real(0.0))
     {

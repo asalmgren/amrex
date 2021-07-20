@@ -354,7 +354,7 @@ void
 compute_hyp_wallflux (const amrex::Real rho, const amrex::Real u, const amrex::Real v,  const amrex::Real w,
                       const amrex::Real p, const amrex::Real axm, const amrex::Real axp,
                       const amrex::Real aym, const amrex::Real ayp, const amrex::Real azm, const amrex::Real azp,
-                      amrex::GpuArray<amrex::Real,NCONS>  fluxw, Parm const* parm) noexcept
+                      amrex::GpuArray<amrex::Real,NEQNS>  fluxw, Parm const& parm) noexcept
 {
     using amrex::Real;
 
@@ -365,7 +365,7 @@ compute_hyp_wallflux (const amrex::Real rho, const amrex::Real u, const amrex::R
 
     Real momfluxn, momfluxt1, momfluxt2;
 
-    riemann(parm->eos_gamma, parm->smallp, parm->smallr,
+    riemann(parm.eos_gamma, parm.smallp, parm.smallr,
             rho, un, p, 0., 0., rho, -un, p, 0, 0,
             fluxw[URHO], momfluxn, momfluxt1, momfluxt2, fluxw[UEDEN]);
 

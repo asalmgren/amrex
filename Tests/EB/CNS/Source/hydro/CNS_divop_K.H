@@ -1,7 +1,8 @@
 #include <AMReX_Config.H>
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void eb_compute_div (int i, int j, int k, int n, bool valid_cell, Array4<Real> const& divu,
+void eb_compute_div (int i, int j, int k, int n, bool valid_cell, 
+                     Array4<Real> const& q, Array4<Real> const& divu,
                      Array4<Real const> const& u, Array4<Real const> const& v,
                      Array4<Real const> const& w,
                      Array4<Real      > const& fx, Array4<Real     > const& fy,
@@ -11,7 +12,7 @@ void eb_compute_div (int i, int j, int k, int n, bool valid_cell, Array4<Real> c
                      Array4<Real const> const& apx, Array4<Real const> const& apy,
                      Array4<Real const> const& apz, Array4<Real const> const& fcx,
                      Array4<Real const> const& fcy, Array4<Real const> const& fcz,
-                     GpuArray<Real,3> const& dxinv, bool already_on_centroids)
+                     GpuArray<Real,3> const& dxinv, Parm const& parm) 
 {
     if (flag(i,j,k).isCovered())
     {
@@ -22,13 +23,6 @@ void eb_compute_div (int i, int j, int k, int n, bool valid_cell, Array4<Real> c
         divu(i,j,k,n) = dxinv[0] * (u(i+1,j,k,n)-u(i,j,k,n))
             +           dxinv[1] * (v(i,j+1,k,n)-v(i,j,k,n))
             +           dxinv[2] * (w(i,j,k+1,n)-w(i,j,k,n));
-    }
-    else if (already_on_centroids)
-    {
-        divu(i,j,k,n) = (1.0/vfrc(i,j,k)) * (
-                        dxinv[0] * (apx(i+1,j,k)*u(i+1,j,k,n)-apx(i,j,k)*u(i,j,k,n))
-            +           dxinv[1] * (apy(i,j+1,k)*v(i,j+1,k,n)-apy(i,j,k)*v(i,j,k,n))
-            +           dxinv[2] * (apz(i,j,k+1)*w(i,j,k+1,n)-apz(i,j,k)*w(i,j,k,n)) );
     }
     else
     {
@@ -114,5 +108,16 @@ void eb_compute_div (int i, int j, int k, int n, bool valid_cell, Array4<Real> c
             ( dxinv[0] * (apx(i+1,j,k)*fxp-apx(i,j,k)*fxm)
             + dxinv[1] * (apy(i,j+1,k)*fyp-apy(i,j,k)*fym)
             + dxinv[2] * (apz(i,j,k+1)*fzp-apz(i,j,k)*fzm) );
+
+        GpuArray<Real,5> fluxw;
+        compute_hyp_wallflux(q(i,j,k,QRHO),q(i,j,k,QU),q(i,j,k,QV),q(i,j,k,QW),
+             q(i,j,k,QPRES),apx(i,j,k),apx(i+1,j,k),apy(i,j,k),apy(i,j+1,j),apz(i,j,k),apz(i,j,k+1),
+             fluxw,parm);
+      
+        // Here we assume dx == dy == dz
+        divu(i,j,k,n) +=  fluxw[n]*dxinv[1]/vfrc(i,j,k);
     }
+
+    // The operations following this assume we have returned the negative of the divergence of fluxes.
+    divu(i,j,k,n) *= -1.0;
 }

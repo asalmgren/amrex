@@ -174,6 +174,6 @@ CNS::cns_flux_redistribute (const Box& bx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
         if (!flag(i,j,k).isCovered())
-            dqdt(i,j,k,n) = divc(i,j,k,n) + optmp(i,j,k,n);
+            dqdt(i,j,k,n) = divc(i,j,k,n); // + optmp(i,j,k,n);
     });
 }

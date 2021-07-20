@@ -53,6 +53,11 @@ CNS::advance (Real time, Real dt, int /*iteration*/, int /*ncycle*/)
     MultiFab::LinComb(S_new, 1.0, Sborder, 0, dt, dSdt, 0, 0, NUM_STATE, 0);
     computeTemp(S_new,0);
 
+    print_state(Sborder,IntVect(32,32,32));
+    print_state(dSdt,IntVect(32,32,32));
+    print_state(S_new,IntVect(32,32,32));
+
+#if 0
     // RK2 stage 2
     // After fillpatch Sborder = U^n+dt*dUdt^n
     FillPatch(*this, Sborder, NUM_GROW, time+dt, State_Type, 0, NUM_STATE);
@@ -62,7 +67,9 @@ CNS::advance (Real time, Real dt, int /*iteration*/, int /*ncycle*/)
     // S_new += 0.5*dt*dSdt
     MultiFab::Saxpy(S_new, 0.5*dt, dSdt, 0, 0, NUM_STATE, 0);
     // We now have S_new = U^{n+1} = (U^n+0.5*dt*dUdt^n) + 0.5*dt*dUdt^*
+
     computeTemp(S_new,0);
+#endif
 
     return dt;
 }

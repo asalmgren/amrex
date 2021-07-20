@@ -154,7 +154,6 @@ CNS::compute_dSdt_box (const Box& bx,
            dcoeff_eli.clear();
         }
 
-
         amrex::ParallelFor(bx, NCONS,
         [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
         {
