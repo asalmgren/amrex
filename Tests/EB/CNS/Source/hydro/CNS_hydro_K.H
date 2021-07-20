@@ -25,6 +25,8 @@ cns_ctoprim (int i, int j, int k,
     Real ei = u(i,j,k,UEDEN) - kineng;
     if (ei <= Real(0.0)) ei = u(i,j,k,UEINT);
     Real p = amrex::max((parm.eos_gamma-Real(1.0))*ei,parm.smallp);
+
+    // q(i,j,k,QEINT) is e, not (rho e)
     ei *= rhoinv;
 
     q(i,j,k,QRHO) = rho;
@@ -34,7 +36,7 @@ cns_ctoprim (int i, int j, int k,
     q(i,j,k,QEINT) = ei;
     q(i,j,k,QPRES) = p;
     q(i,j,k,QCS) = std::sqrt(parm.eos_gamma*p*rhoinv);
-    q(i,j,k,QTEMP) = Real(0.0);
+    q(i,j,k,QTEMP) = ei/parm.cv;
 }
 
 AMREX_GPU_DEVICE
@@ -344,6 +346,33 @@ riemann (const amrex::Real gamma, const amrex::Real smallp, const amrex::Real /*
     flxut = rgdnv*ugdnv*utrans1;
     flxutt = rgdnv*ugdnv*utrans2;
     flxe = ugdnv*(Real(0.5)*rgdnv*(ugdnv*ugdnv+utrans1*utrans1+utrans2*utrans2) + pgdnv/(gamma -Real(1.)) + pgdnv);
+}
+
+AMREX_GPU_DEVICE
+inline
+void
+compute_hyp_wallflux (const amrex::Real rho, const amrex::Real u, const amrex::Real v,  const amrex::Real w, 
+                      const amrex::Real p, const amrex::Real axm, const amrex::Real axp, 
+                      const amrex::Real aym, const amrex::Real ayp, const amrex::Real azm, const amrex::Real azp,
+                      amrex::GpuArray<amrex::Real,NCONS>  fluxw, Parm const* parm) noexcept
+{
+    using amrex::Real;
+    
+    Real apnorm = std::sqrt( (axm-axp)*(axm-axp) + (aym-ayp)*(aym-ayp) + (azm-azp)*(azm-azp) );
+    Real apnorminv = 1./apnorm;
+
+    Real un = u*(axm-axp)*apnorminv + v*(aym-ayp)*apnorminv + w*(azm-azp)*apnorminv ;
+
+    Real momfluxn, momfluxt1, momfluxt2;
+
+    riemann(parm->eos_gamma, parm->smallp, parm->smallr,
+            rho, un, p, 0., 0., rho, -un, p, 0, 0,
+            fluxw[URHO], momfluxn, momfluxt1, momfluxt2, fluxw[UEDEN]);
+
+    fluxw[UMX] =  (axm-axp) * momfluxn;
+    fluxw[UMY] =  (aym-ayp) * momfluxn;
+    fluxw[UMZ] =  (azm-azp) * momfluxn;
+
 }
 }
 

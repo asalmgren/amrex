@@ -1,6 +1,7 @@
 #ifndef CNS_H_
 #define CNS_H_
 
+#include <CNS_index_macros.H>
 #include <CNS_parm.H>
 #include <cns_prob_parm.H>
 #include <AMReX_AmrLevel.H>
@@ -110,11 +111,6 @@ public:
 
     static int numState () { return NUM_STATE; }
 
-    enum StateVariable {
-        Density = 0, Xmom, Ymom, Zmom, Eden, Eint, Temp,
-        NUM_STATE
-    };
-
 protected:
 
     static void read_params ();
@@ -143,18 +139,41 @@ protected:
                            const std::array<FArrayBox*, AMREX_SPACEDIM>& flux);
 
     void compute_dSdt_box_eb (const amrex::Box& bx,
-                              amrex::Array4<amrex::Real const>& Sfab,
-                              amrex::Array4<amrex::Real      >& dSdtfab,
-                              const std::array<FArrayBox*, AMREX_SPACEDIM>& flux,
-                              amrex::Array4<amrex::Real const>& vfrac,
-                              AMREX_D_DECL(amrex::Array4<amrex::Real const> const& apx,
-                                           amrex::Array4<amrex::Real const> const& apy,
-                                           amrex::Array4<amrex::Real const> const& apz),
-                              AMREX_D_DECL(amrex::Array4<amrex::Real const> const& fcx,
-                                           amrex::Array4<amrex::Real const> const& fcy,
-                                           amrex::Array4<amrex::Real const> const& fcz),
-                              amrex::Array4<amrex::EBCellFlag const> flag,
-                              amrex::Array4<int               const> cc_mask);
+                              amrex::Array4<amrex::Real       const> const& Sfab,
+                              amrex::Array4<amrex::Real            > const& dSdtfab,
+                              std::array<FArrayBox*, AMREX_SPACEDIM> const& flux,
+                              amrex::Array4<amrex::EBCellFlag const> const& flag,
+                              amrex::Array4<amrex::Real       const> const& vfrac,
+                              amrex::Array4<amrex::Real       const> const& apx,
+                              amrex::Array4<amrex::Real       const> const& apy,
+                              amrex::Array4<amrex::Real       const> const& apz,
+                              amrex::Array4<amrex::Real       const> const& fcx,
+                              amrex::Array4<amrex::Real       const> const& fcy,
+                              amrex::Array4<amrex::Real       const> const& fcz,
+                              int as_crse, 
+                              amrex::Array4<amrex::Real            > const& drho_as_crse,
+                              amrex::Array4<int                    > const& rrflag_as_crse,
+                              int as_fine, 
+                              amrex::Array4<amrex::Real            > const& dm_as_fine,
+                              amrex::Array4<int               const> const& lev_mask,
+                              amrex::Real dt);
+
+    void cns_flux_redistribute (const amrex::Box& bx,
+                                amrex::Array4<amrex::Real       const> const& q,
+                                amrex::Array4<amrex::Real            > const& dqdt,
+                                amrex::Array4<amrex::Real            > const& divc,
+                                amrex::Array4<amrex::Real            > const& optmp,
+                                amrex::Array4<amrex::Real            > const& del_m,
+                                amrex::Array4<amrex::Real            > const& redistwgt,
+                                amrex::Array4<amrex::Real       const> const& vfrac,
+                                amrex::Array4<amrex::EBCellFlag const> const& flag,
+                                int as_crse, 
+                                amrex::Array4<amrex::Real            > const& drho_as_crse,
+                                amrex::Array4<int                    > const& rrflag_as_crse,
+                                int as_fine, 
+                                amrex::Array4<amrex::Real            > const& dm_as_fine,
+                                amrex::Array4<int               const> const& lev_mask,
+                                amrex::Real dt);
 
     void printTotal () const;
 
@@ -188,6 +207,7 @@ protected:
     static amrex::Real cfl;
 
     static bool do_visc;
+    static bool use_const_visc;
 
     static int plm_iorder;
     static amrex::Real plm_theta;

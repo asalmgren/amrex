@@ -26,6 +26,7 @@ AMREX_GPU_DEVICE
 inline
 void
 cns_constcoef (int i, int j, int k,
+              amrex::Array4<amrex::Real const> const& q,
               amrex::Array4<amrex::Real> const& coefs,
               Parm const& parm) noexcept
 {
@@ -43,7 +44,8 @@ cns_diff_x (int i, int j, int k,
                amrex::Array4<amrex::Real const> const& q,
                amrex::Array4<amrex::Real const> const& coeffs,
                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
-               amrex::Array4<amrex::Real> const& fx) noexcept
+               amrex::Array4<amrex::Real> const& fx,
+               Parm const& parm) noexcept
 {
     using amrex::Real;
 
@@ -78,7 +80,8 @@ void
 cns_diff_y (int i, int j, int k, amrex::Array4<amrex::Real const> const& q,
                amrex::Array4<amrex::Real const> const& coeffs,
                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
-               amrex::Array4<amrex::Real> const& fy) noexcept
+               amrex::Array4<amrex::Real> const& fy,
+               Parm const& parm) noexcept
 {
     using amrex::Real;
 
@@ -115,7 +118,8 @@ cns_diff_z (int i, int j, int k,
                amrex::Array4<amrex::Real const> const& q,
                amrex::Array4<amrex::Real const> const& coeffs,
                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
-               amrex::Array4<amrex::Real> const& fz) noexcept
+               amrex::Array4<amrex::Real> const& fz,
+               Parm const& parm) noexcept
 {
     using amrex::Real;
 

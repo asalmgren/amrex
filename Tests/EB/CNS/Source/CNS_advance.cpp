@@ -76,6 +76,9 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
     const Real* dx = geom.CellSize();
     const int ncomp = dSdt.nComp();
 
+    int as_crse = (fr_as_crse != nullptr);
+    int as_fine = (fr_as_fine != nullptr);
+
     MultiFab& cost = get_new_data(Cost_Type);
 
     auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S.Factory());
@@ -84,7 +87,10 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
     iMultiFab cc_mask;
     if (!fact.isAllRegular())
     {
-        cc_mask.define(S.boxArray(), S.DistributionMap(), 1, 1);
+        // We require 3 ghost cells because ccm is used in the transverse interpolation
+        //    of fluxes from face centers to face centroids; this happens on the box 
+        //    grown by 2 in order to then do redistribution
+        cc_mask.define(S.boxArray(), S.DistributionMap(), 1, 3);
         cc_mask.BuildMask(geom.Domain(), geom.periodicity(), 1, 0, 0, 1);
     }
 
@@ -111,9 +117,12 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
                 dSdt[mfi].setVal<RunOn::Host>(0.0, bx, 0, ncomp);
             } else {
 
+                const Box& bxg2 = amrex::grow(bx,2);
+
                 // flux is used to store centroid flux needed for reflux
                 for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
-                    flux[idim].resize(amrex::surroundingNodes(bx,idim),ncomp);
+                    flux[idim].resize(amrex::surroundingNodes(bxg2,idim),ncomp);
+                    flux[idim].setVal(0.);
                 }
 
                 if (flag.getType(amrex::grow(bx,1)) == FabType::regular)
@@ -138,8 +147,8 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
                         dm_as_fine.resize(amrex::grow(bx,1),ncomp);
                     }
 
-                    Array4<Real const>    s_arr =    S.array(mfi);
-                    Array4<Real      > dsdt_arr = dSdt.array(mfi);
+                    Array4<Real const> const&    s_arr =    S.array(mfi);
+                    Array4<Real      > const& dsdt_arr = dSdt.array(mfi);
 
                     Array4<Real const> vf_arr = (*volfrac).array(mfi);
 
@@ -151,8 +160,11 @@ CNS::compute_dSdt (const MultiFab& S, MultiFab& dSdt, Real dt,
                                  Array4<Real const> const& fcz = facecent[2]->const_array(mfi));
 
                     compute_dSdt_box_eb(bx,s_arr,dsdt_arr,{&flux[0],&flux[1],&flux[2]},
-                                        vf_arr,AMREX_D_DECL(apx,apy,apz),AMREX_D_DECL(fcx,fcy,fcz),
-                                        flags.const_array(mfi),cc_mask.const_array(mfi));
+                                        flags.const_array(mfi), vf_arr,
+                                        AMREX_D_DECL(apx,apy,apz),AMREX_D_DECL(fcx,fcy,fcz),
+                                        as_crse, fab_drho_as_crse.array(), fab_rrflag_as_crse.array(),
+                                        as_fine, dm_as_fine.array(), level_mask.const_array(mfi), dt);
+
 
                     if (fr_as_crse) {
                         fr_as_crse->CrseAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,

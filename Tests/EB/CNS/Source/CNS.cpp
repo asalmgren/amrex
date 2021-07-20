@@ -33,10 +33,12 @@ int       CNS::refine_max_dengrad_lev   = -1;
 Real      CNS::refine_dengrad           = 1.0e10;
 Vector<RealBox> CNS::refine_boxes;
 
-bool      CNS::do_visc    = true;  // diffusion is on by default
-int       CNS::plm_iorder = 2;     // [1,2] 1: slopes are zero'd,  2: second order slopes
-Real      CNS::plm_theta  = 2.0;   // [1,2] 1: minmod; 2: van Leer's MC
-Real      CNS::gravity    = 0.0;
+bool      CNS::do_visc        = true;  // diffusion is on by default
+bool      CNS::use_const_visc = false; // diffusion does not use constant viscosity by default
+
+int       CNS::plm_iorder     = 2;     // [1,2] 1: slopes are zero'd,  2: second order slopes
+Real      CNS::plm_theta      = 2.0;   // [1,2] 1: minmod; 2: van Leer's MC
+Real      CNS::gravity        = 0.0;
 
 int       CNS::eb_weights_type = 0;   // [0,1,2,3] 0: weights are all 1
 int       CNS::do_reredistribution = 1;
@@ -124,6 +126,9 @@ CNS::initData ()
             cns_initdata(i, j, k, s_arr, geomdata, *lparm, *lprobparm);
         });
     }
+
+    // Compute the initial temperature (will override what was set in initdata)
+    computeTemp(S_new,0);
 
     MultiFab& C_new = get_new_data(Cost_Type);
     C_new.setVal(1.0);
@@ -360,7 +365,7 @@ CNS::errorEst (TagBoxArray& tags, int, int, Real /*time*/, int, int)
         const MultiFab& S_new = get_new_data(State_Type);
         const Real cur_time = state[State_Type].curTime();
         MultiFab rho(S_new.boxArray(), S_new.DistributionMap(), 1, 1);
-        FillPatch(*this, rho, rho.nGrow(), cur_time, State_Type, Density, 1, 0);
+        FillPatch(*this, rho, rho.nGrow(), cur_time, State_Type, URHO, 1, 0);
 
         const char   tagval = TagBox::SET;
 //        const char clearval = TagBox::CLEAR;
@@ -412,6 +417,22 @@ CNS::read_params ()
 
     pp.query("do_visc", do_visc);
 
+    if (do_visc)
+    {
+        pp.query("use_const_visc",use_const_visc);
+        if (use_const_visc)
+        {
+            pp.get("const_visc_mu",h_parm->const_visc_mu);
+            pp.get("const_visc_ki",h_parm->const_visc_ki);
+            pp.get("const_lambda" ,h_parm->const_lambda);
+        }
+    } else {
+       use_const_visc = true;
+       h_parm->const_visc_mu = 0.0; 
+       h_parm->const_visc_ki = 0.0; 
+       h_parm->const_lambda  = 0.0; 
+    }
+
     pp.query("refine_cutcells", refine_cutcells);
 
     pp.query("refine_max_dengrad_lev", refine_max_dengrad_lev);
@@ -430,6 +451,9 @@ CNS::read_params ()
 
     pp.query("eos_gamma", h_parm->eos_gamma);
     pp.query("eos_mu"   , h_parm->eos_mu);
+    pp.query("Pr"       , h_parm->Pr);
+    pp.query("C_S"      , h_parm->C_S);
+    pp.query("T_S"      , h_parm->T_S);
 
     h_parm->Initialize();
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
@@ -488,7 +512,7 @@ CNS::buildMetrics ()
     facecent = ebfactory.getFaceCent();
 
     level_mask.clear();
-    level_mask.define(grids,dmap,1,1);
+    level_mask.define(grids,dmap,1,3);
     level_mask.BuildMask(geom.Domain(), geom.periodicity(),
                          level_mask_covered,
                          level_mask_notcovered,

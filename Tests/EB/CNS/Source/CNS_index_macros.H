@@ -8,7 +8,10 @@
 #define UEDEN 4
 #define UEINT 5
 #define UTEMP 6
+#define NUM_STATE 7
+
 #define NCONS 7
+#define NEQNS 5
 
 #define QRHO   0
 #define QU     1
@@ -23,5 +26,6 @@
 #define CETA   0
 #define CXI    1
 #define CLAM   2
+#define NCOEF  3
 
 #endif

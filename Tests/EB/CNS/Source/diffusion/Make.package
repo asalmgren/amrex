@@ -1,6 +1,2 @@
 CEXE_headers += CNS_diffusion_K.H
-
-#F90EXE_sources += cns_diff_mod.F90
-#F90EXE_sources += cns_eb_diff_mod.F90
-#F90EXE_sources += cns_eb_diff_wall.F90
-#F90EXE_sources += diff_coef_mod.F90
+CEXE_headers += CNS_diffusion_eb_K.H
