@@ -11,14 +11,14 @@ jobs:
     name: GNU Multi-D
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Dependencies
       run: |
         .github/workflows/dependencies/dependencies.sh
         .github/workflows/dependencies/dependencies_clang-tidy.sh 15
         .github/workflows/dependencies/dependencies_ccache.sh
     - name: Set Up Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/ccache
         key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
@@ -73,7 +73,7 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
         run: |
           echo $PR_NUMBER > pr_number.txt
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: pr_number
           path: pr_number.txt

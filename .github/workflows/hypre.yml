@@ -13,14 +13,14 @@ jobs:
     env:
       AMREX_HYPRE_HOME: ${HOME}/.cache/hypre-2.26.0-cuda
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Dependencies
       run: |
         .github/workflows/dependencies/dependencies_nvcc.sh 11.2
         sudo apt-get install -y libcublas-dev-11-2 libcusparse-dev-11-2
         .github/workflows/dependencies/dependencies_ccache.sh
     - name: Set Up Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/ccache
@@ -62,14 +62,14 @@ jobs:
     name: GCC 3D Hypre@2.21.0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Dependencies
       run: |
         .github/workflows/dependencies/dependencies.sh
         .github/workflows/dependencies/dependencies_clang-tidy.sh 14
         .github/workflows/dependencies/dependencies_ccache.sh
     - name: Set Up Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/ccache
         key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
@@ -111,14 +111,14 @@ jobs:
     name: GCC EB 2D Hypre@2.28.0
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Dependencies
       run: |
         .github/workflows/dependencies/dependencies.sh
         .github/workflows/dependencies/dependencies_clang-tidy.sh 14
         .github/workflows/dependencies/dependencies_ccache.sh
     - name: Set Up Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/ccache
         key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
@@ -164,7 +164,7 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
         run: |
           echo $PR_NUMBER > pr_number.txt
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: pr_number
           path: pr_number.txt
