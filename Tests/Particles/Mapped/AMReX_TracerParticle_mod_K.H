@@ -230,8 +230,8 @@ void linear_interpolate_to_particle_z (const P& p,
 //            +   height_arr(i0 + (!is_nodal[d][0]), j0                    , k + (!is_nodal[d][2]))
 //            +   height_arr(i0                    , j0 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
 //            +   height_arr(i0 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
-//            ); 
-//        amrex::Real hlo_xloyhi = 0.125 
+//            );
+//        amrex::Real hlo_xloyhi = 0.125
 //            * ( height_arr(i0                    , j0 + 1                    , k                    )
 //            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1                    , k                    )
 //            +   height_arr(i0                    , j0 + 1 + (!is_nodal[d][1]), k                    )
@@ -240,7 +240,7 @@ void linear_interpolate_to_particle_z (const P& p,
 //            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1                    , k + (!is_nodal[d][2]))
 //            +   height_arr(i0                    , j0 + 1 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
 //            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
-//            ); 
+//            );
 //        amrex::Real hlo_xhiylo = 0.125
 //            * ( height_arr(i0 + 1                    , j0                    , k                    )
 //            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0                    , k                    )
@@ -250,8 +250,8 @@ void linear_interpolate_to_particle_z (const P& p,
 //            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0                    , k + (!is_nodal[d][2]))
 //            +   height_arr(i0 + 1                    , j0 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
 //            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
-//            ); 
-//        amrex::Real hlo_xhiyhi = 
+//            );
+//        amrex::Real hlo_xhiyhi =
 //            * ( height_arr(i0 + 1                    , j0 + 1                    , k                    )
 //            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1                    , k                    )
 //            +   height_arr(i0 + 1                    , j0 + 1 + (!is_nodal[d][1]), k                    )
@@ -260,9 +260,9 @@ void linear_interpolate_to_particle_z (const P& p,
 //            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1                    , k + (!is_nodal[d][2]))
 //            +   height_arr(i0 + 1                    , j0 + 1 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
 //            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k + (!is_nodal[d][2]))
-//            ); 
+//            );
 //        amrex::Real height_at_pxy = hlo_xloylo * sx[0] * sy[0] + hlo_xloyhi * sx[0] * sy[1]
-//                                  + hlo_xhiylo * sx[1] * sy[0] + hlo_xhiyhi * sx[1] * sy[1]; 
+//                                  + hlo_xhiylo * sx[1] * sy[0] + hlo_xhiyhi * sx[1] * sy[1];
 
         amrex::Real hlo[4];
         ilo = 0;

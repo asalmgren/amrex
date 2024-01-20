@@ -3,6 +3,7 @@ CEXE_sources += main.cpp
 CEXE_sources += InitAnnulus.cpp
 CEXE_sources += InitHill.cpp
 CEXE_sources += InitStretched.cpp
+CEXE_sources += InitUnstretched.cpp
 
 CEXE_sources += InitUmac.cpp
 CEXE_sources += InitUCC.cpp
@@ -10,6 +11,9 @@ CEXE_sources += InitUND.cpp
 
 CEXE_sources += MappedPC.cpp
 CEXE_headers += MappedPC.H
+
+CEXE_sources += RegularPC.cpp
+CEXE_headers += RegularPC.H
 
 CEXE_sources += TerrainPC.cpp
 CEXE_headers += TerrainPC.H

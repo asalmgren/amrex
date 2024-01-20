@@ -4,16 +4,17 @@
 #include <AMReX_Particles.H>
 #include <AMReX_BoxArray.H>
 #include <MappedPC.H>
+#include <RegularPC.H>
 #include <TerrainPC.H>
 
 using namespace amrex;
 
 enum struct GridType {
-    Terrain, Mapped
+    Regular, Terrain, Mapped
 };
 
 enum struct ProbType {
-    Annulus, Stretched, Hill
+    Annulus, Stretched, Unstretched, Hill
 };
 
 enum struct AdvectionType {
@@ -46,6 +47,7 @@ struct TestParams
     //                 stored in the a_z_loc array
     //    "mapped"  -- the grid is irregularly spaced in all directions and the locations at nodes
     //                 are stored in the a_xyz_loc array
+    //    "regular" -- the grid is regularly spaced in all directions there is no array of positions
     GridType grid_type = GridType::Terrain;
 
     // Types of advection currently include
@@ -55,30 +57,30 @@ struct TestParams
     std::string advection_type = "mac";
 
     // Combinations that are currently allowed and can be tested here
+    // "regular" + {cc, nd, mac}
     // "terrain" + {cc, nd, mac}
     // "mapped"  + {nd}
 
     // Sample mesh initializations currently include
-    // "annulus"   -- this is of grid_type GridType::Mapped and is a periodic rectangle mapped into an annulus
-    // "stretched" -- this is of grid_type GridType::Terrain in which the grid spacing dz only depends on z
-    // "hill"      -- this is of grid_type GridType::Terrain in which the grid spacing dz varies with x and y as well as z
+    // "unstretched" -- the grid spacing dz is constant
+    // "stretched"   -- the grid spacing dz only depends on z
+    // "hill"        -- the grid spacing dz varies with x and y as well as z
+    // "annulus"     -- this is only for grid_type GridType::Mapped and is a periodic rectangle mapped into an annulus
     ProbType prob_type = ProbType::Hill;
 
-    // We have separate calls for cc/nd vs mac.  The location of the velocity in the cc_nd call
-    //    is determined at run-time by checking the boxArray type of the velocity MultiFab
-
-    // Currently the domain size is hard-wired to [0:1, 0.5] if 2D and [0:1, 0:0.5, 0:0.25] if 3D
+    // Currently the domain size is hard-wired to [0:1, 0.5] if 2D and [0:1, 0:0.5, 0:0.5] if 3D
 };
 
 void Test ();
 
-void InitAnnulus (MultiFab& a_xyz_loc, Geometry& geom);
-void InitStretched (MultiFab& a_z_loc  , Geometry& geom);
-void InitHill (MultiFab& a_z_loc  , Geometry& geom);
+void InitAnnulus     (MultiFab& a_xyz_loc, Geometry& geom);
+void InitUnstretched (MultiFab& a_xyz_loc  , Geometry& geom);
+void InitStretched   (MultiFab& a_xyz_loc  , Geometry& geom);
+void InitHill        (MultiFab& a_z_loc  , Geometry& geom);
 
-void InitUmac  (MultiFab* umac, const MultiFab& a_xyz_loc, Geometry& geom, ProbType prob_type);
-void InitUCC (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, ProbType& prob_type);
-void InitUND (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, ProbType& prob_type);
+void InitUmac (MultiFab* umac, const MultiFab& a_xyz_loc, Geometry& geom, ProbType prob_type);
+void InitUCC  (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, ProbType& prob_type);
+void InitUND  (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, ProbType& prob_type);
 
 void get_test_params(TestParams& params)
 {
@@ -95,15 +97,25 @@ void get_test_params(TestParams& params)
 
     std::string grid_type_string;
     pp.get("grid_type"     , grid_type_string);
-    AMREX_ALWAYS_ASSERT(grid_type_string == "mapped" || grid_type_string == "terrain");
-    params.grid_type = (grid_type_string == "mapped") ? GridType::Mapped : GridType::Terrain;
+    AMREX_ALWAYS_ASSERT(grid_type_string == "mapped" || grid_type_string == "terrain" || grid_type_string == "regular");
+    if (grid_type_string == "mapped") {
+        params.grid_type = GridType::Mapped;
+    } else if (grid_type_string == "regular") {
+        params.grid_type = GridType::Regular;
+    } else {
+        params.grid_type = GridType::Terrain;
+    }
 
     std::string prob_type_string;
     pp.get("prob_type", prob_type_string);
-    AMREX_ALWAYS_ASSERT(prob_type_string == "annulus" || prob_type_string == "stretched" || prob_type_string == "hill");
-    if (prob_type_string == "annulus") params.prob_type = ProbType::Annulus;
-    if (prob_type_string == "stretched") params.prob_type = ProbType::Stretched;
-    if (prob_type_string == "hill") params.prob_type = ProbType::Hill;
+    AMREX_ALWAYS_ASSERT(prob_type_string == "annulus" ||
+                        prob_type_string == "stretched" ||
+                        prob_type_string == "unstretched" ||
+                        prob_type_string == "hill");
+    if (prob_type_string == "annulus"    ) params.prob_type = ProbType::Annulus;
+    if (prob_type_string == "unstretched") params.prob_type = ProbType::Unstretched;
+    if (prob_type_string == "stretched"  ) params.prob_type = ProbType::Stretched;
+    if (prob_type_string == "hill"       ) params.prob_type = ProbType::Hill;
 }
 
 int main (int argc, char* argv[])
@@ -165,6 +177,7 @@ void Test()
     // We define both types of particles here, but in separate particle containers
     MappedPC   mapped_pc(geom[lev], dm[lev], ba[lev]);
     TerrainPC terrain_pc(geom[lev], dm[lev], ba[lev]);
+    RegularPC regular_pc(geom[lev], dm[lev], ba[lev]);
 
     IntVect nppc(params.num_ppc);
 
@@ -179,14 +192,28 @@ void Test()
     // This has AMREX_SPACEDIM components to define (x,y,z) as a function of (i,j,k)
     MultiFab a_xyz_loc(ba_nd,dm[lev],AMREX_SPACEDIM,1);
 
-    if (params.grid_type == GridType::Mapped and params.prob_type == ProbType::Annulus) {
+    // Annulus
+    if (params.prob_type == ProbType::Annulus) {
+        AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Mapped);
         InitAnnulus(a_xyz_loc, geom[lev]);
-    } else if (params.grid_type == GridType::Terrain and params.prob_type == ProbType::Stretched) {
+
+    // No stretching
+    } else if (params.prob_type == ProbType::Unstretched) {
+        AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Regular);
+        InitUnstretched(a_z_loc, geom[lev]);
+
+    // Stretched but flat
+    } else if (params.prob_type == ProbType::Stretched) {
+        AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Terrain || params.grid_type == GridType::Mapped);
         InitStretched(a_z_loc, geom[lev]);
-    } else if (params.grid_type == GridType::Terrain and params.prob_type == ProbType::Hill) {
+
+    // Hill
+    } else if (params.prob_type == ProbType::Hill) {
+        AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Terrain || params.grid_type == GridType::Mapped);
         InitHill(a_z_loc, geom[lev]);
+
     } else {
-        amrex::Abort("This grid_type and prob_type combination not allowed.");
+        amrex::Abort("Don't know this prob_type");
     }
 
     // **************************************************************************************
@@ -239,12 +266,17 @@ void Test()
     if (params.grid_type == GridType::Mapped)
     {
         mapped_pc.InitParticles(a_xyz_loc);
-        mapped_pc.WritePlotFile("plot", "particles");
+        mapped_pc.WritePlotFile("plt", "particles");
     }
     else if (params.grid_type == GridType::Terrain)
     {
         terrain_pc.InitParticles(a_z_loc);
-        terrain_pc.WritePlotFile("plot", "particles");
+        terrain_pc.WritePlotFile("plt", "particles");
+    }
+    else if (params.grid_type == GridType::Regular)
+    {
+        regular_pc.InitParticles();
+        regular_pc.WritePlotFile("plt", "particles");
     }
 
     // **************************************************************************************
@@ -267,7 +299,19 @@ void Test()
 
     for (int nt = 0; nt < params.nsteps; nt++)
     {
-        if (params.grid_type == GridType::Terrain && params.advection_type == "mac") {
+        if (params.grid_type == GridType::Regular && params.advection_type == "mac") {
+            amrex::Print() << "Advecting at time " << nt << " using MAC velocities" << std::endl;
+            regular_pc.AdvectWithUmac(&umac[0], 0, dt);
+
+        } else if (params.grid_type == GridType::Regular && params.advection_type == "cc") {
+            amrex::Print() << "Advecting at time " << nt << " using cell-centered velocities" << std::endl;
+            regular_pc.AdvectWithUmac(&umac[0], 0, dt);
+
+        } else if (params.grid_type == GridType::Regular && params.advection_type == "nd") {
+            amrex::Print() << "Advecting at time " << nt << " using node-centered velocities" << std::endl;
+            regular_pc.AdvectWithUmac(&umac[0], 0, dt);
+
+        } else if (params.grid_type == GridType::Terrain && params.advection_type == "mac") {
             amrex::Print() << "Advecting at time " << nt << " using MAC velocities" << std::endl;
             terrain_pc.AdvectWithUmac(&umac[0], 0, dt, a_z_loc);
 
@@ -285,11 +329,11 @@ void Test()
             mapped_pc.AdvectWithUND(und, 0, dt, a_xyz_loc);
         }
 
-        plotfilename = Concatenate("plot", nt, 5);
+        plotfilename = Concatenate("plt", nt, 5);
         if (params.grid_type == GridType::Terrain) {
             terrain_pc.WritePlotFile(plotfilename, "particles");
         } else if (params.grid_type == GridType::Mapped) {
             mapped_pc.WritePlotFile(plotfilename, "particles");
         }
-    }
+    } // nt
 }

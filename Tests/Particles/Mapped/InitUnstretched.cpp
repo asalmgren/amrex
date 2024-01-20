@@ -4,7 +4,7 @@
 using namespace amrex;
 
 void
-InitStretched (MultiFab& a_xyz_loc, Geometry& geom)
+InitUnstretched (MultiFab& a_xyz_loc, Geometry& geom)
 {
     AMREX_ALWAYS_ASSERT(a_xyz_loc.nComp() == 1 || a_xyz_loc.nComp() == AMREX_SPACEDIM);
 
@@ -14,18 +14,10 @@ InitStretched (MultiFab& a_xyz_loc, Geometry& geom)
     //           AMREX_SPACEDIM-1 for generalized mapped
     int z_comp = a_xyz_loc.nComp() - 1;
 
-    const Real hpi = Real(0.5) * amrex::Math::pi<Real>();
-
-    const int zdir = AMREX_SPACEDIM-1;
-
-    auto domain = geom.Domain();
+    // auto domain = geom.Domain();
     auto problo = geom.ProbLo();
-    auto probhi = geom.ProbHi();
+    // auto probhi = geom.ProbHi();
     const auto dx = geom.CellSizeArray();
-
-    // Define dz_unit so that at k = khi, k*dz_unit = 1
-    Real  z_size = (probhi[zdir] - problo[zdir]);
-    Real dz_unit = z_size / static_cast<Real>(domain.length()[zdir]);
 
     for (MFIter mfi(a_xyz_loc); mfi.isValid(); ++mfi)
     {
@@ -42,7 +34,7 @@ InitStretched (MultiFab& a_xyz_loc, Geometry& geom)
         {
             for (int j = tlo.y; j <= thi.y; j++)
             {
-                loc_arr(i,j,0,z_comp) = problo[1] + z_size * sin(hpi * j * dz_unit);
+                loc_arr(i,j,0,z_comp) = problo[1] + static_cast<Real>(j) * dx[1];
             }
             loc_arr(i,tlo.y-1,0,z_comp) = 2.0 * loc_arr(i,tlo.y,0,z_comp) -  loc_arr(i,tlo.y+1,0,z_comp);
             loc_arr(i,thi.y+1,0,z_comp) = 2.0 * loc_arr(i,thi.y,0,z_comp) -  loc_arr(i,thi.y-1,0,z_comp);
@@ -71,7 +63,7 @@ InitStretched (MultiFab& a_xyz_loc, Geometry& geom)
         {
             for (int k = tlo.z; k <= thi.z; k++)
             {
-                loc_arr(i,j,k,z_comp) = problo[2] + z_size * sin(hpi * k * dz_unit);
+                loc_arr(i,j,k,z_comp) = problo[2] + static_cast<Real>(k)  * dx[2];
             }
             loc_arr(i,j,tlo.z-1,z_comp) = 2.0 * loc_arr(i,j,tlo.z,z_comp) -  loc_arr(i,j,tlo.z+1,z_comp);
             loc_arr(i,j,thi.z+1,z_comp) = 2.0 * loc_arr(i,j,thi.z,z_comp) -  loc_arr(i,j,thi.z-1,z_comp);
