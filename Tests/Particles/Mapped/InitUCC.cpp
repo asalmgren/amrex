@@ -8,9 +8,9 @@ enum struct ProbType {
 };
 
 void
-InitUCC (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, ProbType& prob_type)
+InitUCC_map (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, Real vert_vel, ProbType prob_type)
 {
-    BL_PROFILE("InitUCC");
+    BL_PROFILE("InitUCC_map");
 
     auto probhi = geom.ProbHi();
     auto problo = geom.ProbLo();
@@ -19,8 +19,11 @@ InitUCC (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, ProbType& pro
     Real cx = 0.5 * (problo[0]+probhi[0]);
     Real cy = 0.5 * (problo[1]+probhi[1]);
 
-    amrex::Print() << "UCC NG " << ucc.nGrow() << std::endl;
+    int zdir  = AMREX_SPACEDIM - 1;
 
+    //
+    // ANNULUS
+    //
     if (prob_type == ProbType::Annulus) {
 
         AMREX_ALWAYS_ASSERT(a_xyz_loc.nComp() == AMREX_SPACEDIM);
@@ -69,21 +72,79 @@ InitUCC (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, ProbType& pro
             });
         }
 
-    } else if (prob_type == ProbType::Stretched) {
+    // Not the annulus
+    } else {
 
-        // Set to 1 in x-direction
-        ucc.setVal(1.0,0,1,ucc.nGrow());
+        int zcomp = (a_xyz_loc.nComp() == 1) ? 0 : AMREX_SPACEDIM - 1;
 
-        // Set to 0 in other directions
-        ucc.setVal(0.0,1,AMREX_SPACEDIM-1,ucc.nGrow());
+        for (MFIter mfi(ucc); mfi.isValid(); ++mfi)
+        {
+            const Box& tile_box  = mfi.growntilebox();
+            auto u_arr = ucc.array(mfi);
+            auto loc_arr = a_xyz_loc.const_array(mfi);
 
-    } else if (prob_type == ProbType::Hill) {
+            ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                // Physical location of cell center
+#if (AMREX_SPACEDIM == 2)
+                Real z = 0.5 * (loc_arr(i,j,k,zcomp) + loc_arr(i,j+1,k,zcomp));
+#elif (AMREX_SPACEDIM == 3)
+                Real z = 0.5 * (loc_arr(i,j,k,zcomp) + loc_arr(i,j,k+1,zcomp));
+#endif
 
-        // Set to 1 in x-direction
-        ucc.setVal(1.0,0,1,ucc.nGrow());
+                // Horizontal velocity u(z)
+                // Vertical   velocity constant
+                u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
+                u_arr(i,j,k,zdir) = vert_vel;
 
-        // Set to 0 in other directions
-        ucc.setVal(0.0,1,AMREX_SPACEDIM-1,ucc.nGrow());
+#if (AMREX_SPACEDIM == 2)
+                if (i == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
+                                                        u_arr(i,j,k) << " " << u_arr(i,j,k,zdir) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                if (i == 0 && j == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
+                                                        u_arr(i,j,k) <<" " << u_arr(i,j,k,zdir) <<  std::endl;
+#endif
+            });
+        }
     }
+}
 
+void
+InitUCC_reg (MultiFab& ucc, Geometry& geom, Real vert_vel, ProbType /*prob_type*/)
+{
+    BL_PROFILE("InitUCC_reg");
+
+    const auto problo = geom.ProbLo();
+    const auto dx     = geom.CellSizeArray();
+
+    int zdir = AMREX_SPACEDIM - 1;
+
+    for (MFIter mfi(ucc); mfi.isValid(); ++mfi)
+    {
+        const Box& tile_box  = mfi.growntilebox();
+        auto u_arr = ucc.array(mfi);
+
+        ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            // Physical location of cell center
+#if (AMREX_SPACEDIM == 2)
+            Real z = problo[1] + (static_cast<Real>(j)+0.5) * dx[AMREX_SPACEDIM-1];
+#elif (AMREX_SPACEDIM == 3)
+            Real z = problo[2] + (static_cast<Real>(k)+0.5) * dx[AMREX_SPACEDIM-1];
+#endif
+
+            // Horizontal velocity u(z)
+            // Vertical   velocity constant
+            u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
+            u_arr(i,j,k,zdir) = vert_vel;
+
+#if (AMREX_SPACEDIM == 2)
+                if (i == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
+                                                        u_arr(i,j,k) << " " << u_arr(i,j,k,zdir) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                if (i == 0 && j == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
+                                                        u_arr(i,j,k) <<" " << u_arr(i,j,k,zdir) <<  std::endl;
+#endif
+        });
+    }
 }

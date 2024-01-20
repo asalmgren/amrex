@@ -18,6 +18,11 @@ InitParticles (MultiFab& a_xyz_loc)
 
     const int lev = 0;
 
+    const auto domain = Geom(lev).Domain();
+
+    auto dom_lo = lbound(domain);
+    auto dom_hi = ubound(domain);
+
     for(MFIter mfi(a_xyz_loc); mfi.isValid(); ++mfi)
     {
         const Box& tile_box  = enclosedCells(mfi.tilebox());
@@ -30,13 +35,16 @@ InitParticles (MultiFab& a_xyz_loc)
 
         for (IntVect iv = tile_box.smallEnd(); iv <= tile_box.bigEnd(); tile_box.next(iv))
         {
-            int i = iv[0]; int j = iv[1];
+
 #if (AMREX_SPACEDIM == 2)
             int k = 0;
+            if (iv[0] == 0 && iv[1] >= dom_lo.y && iv[1] <= dom_hi.y/2) {
 #elif (AMREX_SPACEDIM == 3)
             int k = iv[2];
+            if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) {
 #endif
-            if (iv[0] == 0) {
+                int i = iv[0];
+                int j = iv[1];
 
                 // This is the physical location of the center of the cell
                 Real x = 0.25*( loc_arr(i  ,j,k,0) + loc_arr(i  ,j+1,k,0)
@@ -116,13 +124,8 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
     AMREX_ASSERT(lev >= 0 && lev < GetParticles().size());
 
     auto problo = this->ParticleContainerBase::Geom(0).ProbLoArray();
-    auto probhi = this->ParticleContainerBase::Geom(0).ProbHiArray();
 
     const auto dxi = this->ParticleContainerBase::Geom(0).InvCellSizeArray();
-
-    // Center of the annulus
-    Real cx = 0.5 * (problo[0]+probhi[0]);
-    Real cy = 0.5 * (problo[1]+probhi[1]);
 
     for (int ipass = 0; ipass < 2; ipass++)
     {
@@ -150,23 +153,12 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
 
                 if (ipass == 0)
                 {
-                    Real r = std::sqrt((p.pos(0)-cx)*(p.pos(0)-cx)  +(p.pos(1)-cy)*(p.pos(1)-cy));
-                    Real theta = atan((p.pos(1)-cy)/(p.pos(0)-cx));
-
-                    amrex::Print() << "UPDATING FROM " << p.pos(0) << " " << p.pos(1) <<
-                                       " WITH RADIUS   " << r <<
-                                       " WITH  THETA   " << theta*180/3.1415926 <<
-                                       " AND VEL " << v[0] << " " << v[1] << std::endl;
-
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
-                    r = std::sqrt((p.pos(0)-cx)*(p.pos(0)-cx)  +(p.pos(1)-cy)*(p.pos(1)-cy));
-                    amrex::Print() << "          TO  " << p.pos(0) << " " << p.pos(1) <<
-                                       " WITH RADIUS   " << r <<
-                                       " AND VEL " << v[0] << " " << v[1] << std::endl;
                 }
                 else
                 {
@@ -175,6 +167,7 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 
                     // also update z-coordinate here
                     IntVect iv(
@@ -226,12 +219,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
 
     const auto dxi = this->ParticleContainerBase::Geom(0).InvCellSizeArray();
 
-    auto probhi = this->ParticleContainerBase::Geom(0).ProbHiArray();
     auto problo = this->ParticleContainerBase::Geom(0).ProbLoArray();
-
-    // Center of the annulus
-    Real cx = 0.5 * (problo[0]+probhi[0]);
-    Real cy = 0.5 * (problo[1]+probhi[1]);
 
     for (int ipass = 0; ipass < 2; ipass++)
     {
@@ -259,23 +247,12 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
 
                 if (ipass == 0)
                 {
-                    Real r = std::sqrt((p.pos(0)-cx)*(p.pos(0)-cx)  +(p.pos(1)-cy)*(p.pos(1)-cy));
-                    Real theta = atan((p.pos(1)-cy)/(p.pos(0)-cx));
-
-                    amrex::Print() << "UPDATING FROM " << p.pos(0) << " " << p.pos(1) <<
-                                       " WITH RADIUS   " << r <<
-                                       " WITH  THETA   " << theta*180/3.1415926 <<
-                                       " AND VEL " << v[0] << " " << v[1] << std::endl;
-
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
-                    r = std::sqrt((p.pos(0)-cx)*(p.pos(0)-cx)  +(p.pos(1)-cy)*(p.pos(1)-cy));
-                    amrex::Print() << "          TO  " << p.pos(0) << " " << p.pos(1) <<
-                                       " WITH RADIUS   " << r <<
-                                       " AND VEL " << v[0] << " " << v[1] << std::endl;
                 }
                 else
                 {
@@ -284,6 +261,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 
                     // also update z-coordinate here
                     IntVect iv(

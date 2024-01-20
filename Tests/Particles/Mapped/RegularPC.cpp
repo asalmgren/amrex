@@ -38,7 +38,7 @@ InitParticles ()
         {
             int i = iv[0]; int j = iv[1];
 #if (AMREX_SPACEDIM == 2)
-            if (iv[0] == 0 && iv[1] >= dom_lo.y && iv[1] <= dom_hi.y) {
+            if (iv[0] == 0 && iv[1] >= dom_lo.y && iv[1] <= dom_hi.y/2) {
 #elif (AMREX_SPACEDIM == 3)
             int k = iv[2];
             if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z) {
@@ -179,7 +179,7 @@ RegularPC::AdvectWithUmac (MultiFab* umac, int lev, Real dt)
 
                 if (ipass == 0)
                 {
-                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << " " << v[0] << std::endl;
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
                         p.rdata(dim) = p.pos(dim);
@@ -193,7 +193,7 @@ RegularPC::AdvectWithUmac (MultiFab* umac, int lev, Real dt)
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
-                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << " " << v[0] << std::endl;
                 }
             });
         } // pti
@@ -242,13 +242,12 @@ RegularPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt)
 
                 if (ipass == 0)
                 {
-                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(1) << std::endl;
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << " " << v[0] << std::endl;
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
-                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
                 }
                 else
                 {
@@ -257,6 +256,7 @@ RegularPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt)
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << " " << v[0] << std::endl;
                 }
             });
         } // ParIter
@@ -301,11 +301,11 @@ RegularPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt)
                 if (p.id() <= 0) { return; }
 
                 ParticleReal v[AMREX_SPACEDIM];
-                cic_interpolate(p, problo, dxi, vel_nd_arr, v);
+                cic_interpolate_nd(p, problo, dxi, vel_nd_arr, v);
 
                 if (ipass == 0)
                 {
-                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << " " << v[0] << std::endl;
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
                         p.rdata(dim) = p.pos(dim);
@@ -319,7 +319,7 @@ RegularPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt)
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
-                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << " " << v[0] << std::endl;
                 }
             });
         } // ParIter

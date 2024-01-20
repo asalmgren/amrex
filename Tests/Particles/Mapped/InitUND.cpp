@@ -8,9 +8,9 @@ enum struct ProbType {
 };
 
 void
-InitUND (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, ProbType& prob_type)
+InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, Real vert_vel, ProbType prob_type)
 {
-    BL_PROFILE("InitUND");
+    BL_PROFILE("InitUND_map");
 
     auto probhi = geom.ProbHi();
     auto problo = geom.ProbLo();
@@ -21,6 +21,9 @@ InitUND (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, ProbType& pro
 
     amrex::Print() << "UND NG " << und.nGrow() << std::endl;
 
+    //
+    // ANNULUS
+    //
     if (prob_type == ProbType::Annulus) {
 
         // We only do this problem with fully mapped coordinates
@@ -64,21 +67,77 @@ InitUND (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, ProbType& pro
             });
         }
 
-    } else if (prob_type == ProbType::Stretched) {
+    } else {
 
-        // Set to 1 in x-direction
-        und.setVal(1.0,0,1,und.nGrow());
+        //
+        // SHEAR FLOW
+        //
+        int zdir  = AMREX_SPACEDIM - 1;
+        int zcomp = (a_xyz_loc.nComp() == 1) ? 0 : AMREX_SPACEDIM - 1;
 
-        // Set to 0 in other directions
-        und.setVal(0.0,1,AMREX_SPACEDIM-1,und.nGrow());
+        for (MFIter mfi(und); mfi.isValid(); ++mfi)
+        {
+            const Box& tile_box  = mfi.growntilebox();
+            auto u_arr = und.array(mfi);
+            auto loc_arr = a_xyz_loc.const_array(mfi);
 
-    } else if (prob_type == ProbType::Hill) {
+            ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                // Physical location of node
+                Real z = loc_arr(i,j,k,zcomp);
 
-        // Set to 1 in x-direction
-        und.setVal(1.0,0,1,und.nGrow());
+                // Horizontal velocity u(z)
+                // Vertical   velocity constant
+                u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
+                u_arr(i,j,k,zdir) = vert_vel;
 
-        // Set to 0 in other directions
-        und.setVal(0.0,1,AMREX_SPACEDIM-1,und.nGrow());
+#if (AMREX_SPACEDIM == 2)
+                if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+#endif
+            });
+        }
     }
+}
 
+void
+InitUND_reg (MultiFab& und, Geometry& geom, Real vert_vel, ProbType /*prob_type*/)
+{
+    BL_PROFILE("InitUND_reg");
+
+    const auto problo = geom.ProbLo();
+    const auto dx     = geom.CellSizeArray();
+
+    int zdir  = AMREX_SPACEDIM - 1;
+
+    //
+    // SHEAR FLOW
+    //
+    for (MFIter mfi(und); mfi.isValid(); ++mfi)
+    {
+        const Box& tile_box  = mfi.growntilebox();
+        auto u_arr = und.array(mfi);
+
+        ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            // Physical location of node
+#if (AMREX_SPACEDIM == 2)
+            Real z = problo[zdir] + static_cast<Real>(j) * dx[AMREX_SPACEDIM-1];
+#elif (AMREX_SPACEDIM == 3)
+            Real z = problo[zdir] + static_cast<Real>(k) * dx[AMREX_SPACEDIM-1];
+#endif
+
+            // Horizontal velocity u(z)
+            // Vertical   velocity constant
+            u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
+            u_arr(i,j,k,zdir) = vert_vel;
+
+#if (AMREX_SPACEDIM == 2)
+            if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+            if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+#endif
+        });
+    }
 }

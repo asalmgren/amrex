@@ -1,0 +1,18 @@
+rm -f out.* to.* from.*
+./main2d.gnu.DEBUG.TPROF.MPI.ex inputs grid_type=regular advection_type=nd  prob_type=unstretched | tee out.reg.unstretched.nd
+./main2d.gnu.DEBUG.TPROF.MPI.ex inputs grid_type=regular advection_type=cc  prob_type=unstretched | tee out.reg.unstretched.cc
+./main2d.gnu.DEBUG.TPROF.MPI.ex inputs grid_type=regular advection_type=mac prob_type=unstretched | tee out.reg.unstretched.mac
+./main2d.gnu.DEBUG.TPROF.MPI.ex inputs grid_type=terrain advection_type=nd  prob_type=unstretched | tee out.ter.unstretched.nd
+./main2d.gnu.DEBUG.TPROF.MPI.ex inputs grid_type=terrain advection_type=cc  prob_type=unstretched | tee out.ter.unstretched.cc
+./main2d.gnu.DEBUG.TPROF.MPI.ex inputs grid_type=terrain advection_type=mac prob_type=unstretched | tee out.ter.unstretched.mac
+grep FROM out.reg.unstretched.nd  | head -16 > from.un.reg.nd
+grep FROM out.reg.unstretched.cc  | head -16 > from.un.reg.cc
+grep FROM out.reg.unstretched.mac | head -16 > from.un.reg.mac
+grep TO  out.reg.unstretched.nd   | tail -16 > to.un.reg.nd
+grep TO  out.reg.unstretched.cc   | tail -16 > to.un.reg.cc
+grep TO  out.reg.unstretched.mac  | tail -16 > to.un.reg.mac
+grep TO  out.ter.unstretched.nd   | tail -16 > to.un.ter.nd
+grep TO  out.ter.unstretched.cc   | tail -16 > to.un.ter.cc
+grep TO  out.ter.unstretched.mac  | tail -16 > to.un.ter.mac
+ls from.* | xargs sed -i -e 's/FROM//g'
+ls to.*   | xargs sed -i -e 's/TO//g'
