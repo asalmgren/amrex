@@ -254,7 +254,6 @@ void linear_interpolate_to_particle_z (const P& p,
         int const i0 = static_cast<int>(amrex::Math::floor(lx));
         int const j  = static_cast<int>(amrex::Math::floor(ly));
         int k = 0; // temporary for 2D
-        int k0 = 0; // temporary for 2D
 
 //        AMREX_D_TERM(amrex::Real xoff =  static_cast<Real>(!is_nodal[d][0])*Real(0.5);,
 //                     amrex::Real yoff =  static_cast<Real>(!is_nodal[d][1])*Real(0.5);,
@@ -360,10 +359,10 @@ void linear_interpolate_to_particle_z (const P& p,
 //                                  + hlo_xhiylo * sx[1] * sy[0] + hlo_xhiyhi * sx[1] * sy[1];
 
         amrex::Real hlo[4];
-        ilo = 0;
+        int ilo = 0;
         amrex::Real height_at_pxy = 0.;
-        for (ii = 0; ii < 2; ++ii) {
-            for (jj = 0; jj < 2; ++jj) {
+        for (int ii = 0; ii < 2; ++ii) {
+            for (int jj = 0; jj < 2; ++jj) {
                 hlo[ilo] = 0.125
                 * ( height_arr(i0 + ii                    , j0 + jj                    , k                    )
                 +   height_arr(i0 + ii + (!is_nodal[d][0]), j0 + jj                    , k                    )
@@ -472,9 +471,9 @@ void linear_interpolate_to_particle_z (const P& p,
         // to make z0-z7 concise
         int zctr = 0;
         amrex::Real ht[8];
-        for (ii = 0; ii < 2; ++i)
-        for (jj = 0; jj < 2; ++jj) {
-        for (kk = 0; kk < 2; ++kk) {
+        for (int ii = 0; ii < 2; ++ii) {
+        for (int jj = 0; jj < 2; ++jj) {
+        for (int kk = 0; kk < 2; ++kk) {
             ht[zctr] = 0.125 *
              ( height_arr(i0 + ii                    , j0 + jj                    , k0 + kk                    )
              + height_arr(i0 + ii                    , j0 + jj                    , k0 + kk + (!is_nodal[d][2]))
@@ -488,16 +487,24 @@ void linear_interpolate_to_particle_z (const P& p,
             ++zctr;
         }}}
 
-          amrex::Real hint_ilojlo = ( p.pos[2] - ht[0] ) / (ht[1] - ht[0]);
-          amrex::Real hint_ilojhi = ( p.pos[2] - ht[2] ) / (ht[3] - ht[2]);
-          amrex::Real hint_ihijlo = ( p.pos[2] - ht[4] ) / (ht[5] - ht[4]);
-          amrex::Real hint_ihijhi = ( p.pos[2] - ht[6] ) / (ht[7] - ht[6]);
+          amrex::Real hint_ilojlo = ( p.pos(2) - ht[0] ) / (ht[1] - ht[0]);
+          amrex::Real hint_ilojhi = ( p.pos(2) - ht[2] ) / (ht[3] - ht[2]);
+          amrex::Real hint_ihijlo = ( p.pos(2) - ht[4] ) / (ht[5] - ht[4]);
+          amrex::Real hint_ihijhi = ( p.pos(2) - ht[6] ) / (ht[7] - ht[6]);
 
           // REVA -- CHECK THIS
-          amrex::Real sz[] = { amrex::Real(1.) - hint_ilojlo, hint_ilojlo,
-                               amrex::Real(1.) - hint_ilojhi, hint_ilojhi,
-                               amrex::Real(1.) - hint_ihijlo, hint_ihijlo,
-                               amrex::Real(1.) - hint_ihijhi, hint_ihijhi};
+          //amrex::Real sz[] = { amrex::Real(1.) - hint_ilojlo, hint_ilojlo,
+          //                     amrex::Real(1.) - hint_ilojhi, hint_ilojhi,
+          //                     amrex::Real(1.) - hint_ihijlo, hint_ihijlo,
+          //                     amrex::Real(1.) - hint_ihijhi, hint_ihijhi};
+          amrex::Real sz[] = { amrex::Real(1.) - hint_ilojlo,
+                               amrex::Real(1.) - hint_ihijlo, 
+                               amrex::Real(1.) - hint_ilojhi,
+                               amrex::Real(1.) - hint_ihijhi,
+                                                 hint_ilojlo,
+                                                 hint_ihijlo,
+                                                 hint_ilojhi,
+                                                 hint_ihijhi};
 
 //
 //        amrex::Real x1 = (static_cast<Real>(i  ) + xoff) * dx[0];
