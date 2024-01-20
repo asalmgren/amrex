@@ -8,7 +8,7 @@ enum struct ProbType {
 };
 
 void
-InitUmac (MultiFab* umac, const MultiFab& a_z_loc, Geometry& /*geom*/, ProbType prob_type)
+InitUmac (MultiFab* umac, const MultiFab& a_z_loc, Geometry& /*geom*/, ProbType /*prob_type*/)
 {
     BL_PROFILE("InitUmac");
 

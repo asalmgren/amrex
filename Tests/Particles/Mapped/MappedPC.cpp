@@ -115,8 +115,10 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
     BL_PROFILE("MappedPC::AdvectWithCC()");
     AMREX_ASSERT(lev >= 0 && lev < GetParticles().size());
 
-    auto probhi = this->ParticleContainerBase::Geom(0).ProbHi();
-    auto problo = this->ParticleContainerBase::Geom(0).ProbLo();
+    auto problo = this->ParticleContainerBase::Geom(0).ProbLoArray();
+    auto probhi = this->ParticleContainerBase::Geom(0).ProbHiArray();
+
+    const auto dxi = this->ParticleContainerBase::Geom(0).InvCellSizeArray();
 
     // Center of the annulus
     Real cx = 0.5 * (problo[0]+probhi[0]);
@@ -144,7 +146,7 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
                 if (p.id() <= 0) { return; }
 
                 ParticleReal v[AMREX_SPACEDIM];
-                cic_interpolate_mapped(p, vel_cc_arr, loc_arr, v);
+                cic_interpolate_mapped(p, problo, dxi, vel_cc_arr, loc_arr, v);
 
                 if (ipass == 0)
                 {
