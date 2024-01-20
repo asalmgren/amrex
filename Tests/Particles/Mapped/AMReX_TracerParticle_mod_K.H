@@ -285,6 +285,122 @@ void linear_interpolate_to_particle_z (const P& p,
         }
 
         int const k0 = (amrex::Real(p.pos(2)) >= height_at_pxy ) ? k : k-1;
+        // will delete the commented code below after testing the concise logic
+//        amrex::Real z0 = 0.125
+//            * ( height_arr(i0                    , j0                    , k0                    )
+//            +   height_arr(i0                    , j0                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0                    , j0 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0                    , j0 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0                    , k0                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            );
+//
+//        amrex::Real z1 = 0.125
+//            * ( height_arr(i0                    , j0                    , k0 + 1                    )
+//            +   height_arr(i0                    , j0                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0                    , j0 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0                    , j0 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0                    , k0 + 1                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            );
+//
+//        amrex::Real z2 = 0.125
+//            * ( height_arr(i0                    , j0 + 1                    , k0                    )
+//            +   height_arr(i0                    , j0 + 1                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0                    , j0 + 1 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0                    , j0 + 1 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1                    , k0                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            );
+//
+//        amrex::Real z3 = 0.125
+//            * ( height_arr(i0                    , j0 + 1                    , k0 + 1                    )
+//            +   height_arr(i0                    , j0 + 1                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0                    , j0 + 1 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0                    , j0 + 1 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1                    , k0 + 1                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            );
+//
+//        amrex::Real z4 = 0.125
+//            * ( height_arr(i0 + 1                    , j0                    , k0                    )
+//            +   height_arr(i0 + 1                    , j0                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1                    , j0 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0 + 1                    , j0 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0                    , k0                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            );
+//
+//        amrex::Real z5 = 0.125
+//            * ( height_arr(i0 + 1                    , j0                    , k0 + 1                    )
+//            +   height_arr(i0 + 1                    , j0                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1                    , j0 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0 + 1                    , j0 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0                    , k0 + 1                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            );
+//
+//        amrex::Real z6 = 0.125
+//            * ( height_arr(i0 + 1                    , j0 + 1                    , k0                    )
+//            +   height_arr(i0 + 1                    , j0 + 1                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1                    , j0 + 1 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0 + 1                    , j0 + 1 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1                    , k0                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1                    , k0 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0 + (!is_nodal[d][2]))
+//            );
+//
+//        amrex::Real z7 = 0.125
+//            * ( height_arr(i0 + 1                    , j0 + 1                    , k0 + 1                    )
+//            +   height_arr(i0 + 1                    , j0 + 1                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1                    , j0 + 1 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0 + 1                    , j0 + 1 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1                    , k0 + 1                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1                    , k0 + 1 + (!is_nodal[d][2]))
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0 + 1                    )
+//            +   height_arr(i0 + 1 + (!is_nodal[d][0]), j0 + 1 + (!is_nodal[d][1]), k0 + 1 + (!is_nodal[d][2]))
+//            );
+
+        // to make z0-z7 concise
+        int zctr = 0;
+        amrex::Real ht[8];
+        for (ii = 0; ii < 2; ++i)
+        for (jj = 0; jj < 2; ++jj) {
+        for (kk = 0; kk < 2; ++kk) {
+            ht[zctr] = 0.125 *
+             ( height_arr(i0 + ii                    , j0 + jj                    , k0 + kk                    )
+             + height_arr(i0 + ii                    , j0 + jj                    , k0 + kk + (!is_nodal[d][2]))
+             + height_arr(i0 + ii                    , j0 + jj + (!is_nodal[d][1]), k0 + kk                    )
+             + height_arr(i0 + ii                    , j0 + jj + (!is_nodal[d][1]), k0 + kk + (!is_nodal[d][2]))
+             + height_arr(i0 + ii + (!is_nodal[d][0]), j0 + jj                    , k0 + kk                    )
+             + height_arr(i0 + ii + (!is_nodal[d][0]), j0 + jj                    , k0 + kk + (!is_nodal[d][2]))
+             + height_arr(i0 + ii + (!is_nodal[d][0]), j0 + jj + (!is_nodal[d][1]), k0 + kk                    )
+             + height_arr(i0 + ii + (!is_nodal[d][0]), j0 + jj + (!is_nodal[d][1]), k0 + kk + (!is_nodal[d][2]))
+             );
+        }}}
+
+          amrex::Real hint_ilojlo = ( p.pos[2] - ht[0] ) / (ht[1] - ht[0]);
+          amrex::Real hint_ilojhi = ( p.pos[2] - ht[2] ) / (ht[3] - ht[2]);
+          amrex::Real hint_ihijlo = ( p.pos[2] - ht[4] ) / (ht[5] - ht[4]);
+          amrex::Real hint_ihijhi = ( p.pos[2] - ht[6] ) / (ht[7] - ht[6]);
+          amrex::Real sz[] = { amrex::Real(1.) - hint_ilojlo, hint_ilojlo,
+                               amrex::Real(1.) - hint_ilojhi, hint_ilojhi,
+                               amrex::Real(1.) - hint_ihijlo, hint_ihijlo,
+                               amrex::Real(1.) - hint_ihijhi, hint_ihijhi};
+
 //
 //        amrex::Real x1 = (static_cast<Real>(i  ) + xoff) * dx[0];
 //        amrex::Real x2 = (static_cast<Real>(i  ) + xoff) * dx[0] - x1;
@@ -313,6 +429,16 @@ void linear_interpolate_to_particle_z (const P& p,
             for (int jj = 0; jj <= 3; ++jj) {
                 for (int ii = 0; ii <=1; ++ii) {
                     val[ctr] += static_cast<ParticleReal>( (data_arr[d])(i0+ii, j0+jj, k0 ,comp)*sx[ii]*sy[jj]);
+                }
+            }
+#elif (AMREX_SPACEDIM == 3)
+            // not tested yet
+            for (int kk = 0; kk <= 7; ++kk) {
+                for (int jj = 0; jj <= 1; ++jj) {
+                    for (int ii = 0; ii <= 1; ++ii) {
+                        val[ctr] += static_cast<ParticleReal>(
+                                    (data_arr[d])(i0+ii, j0+jj, k0 + kk, comp)*sx[ii]*sy[jj]*sz[kk]);
+                    }
                 }
             }
 #endif
