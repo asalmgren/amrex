@@ -1,0 +1,4 @@
+set yrange [0:1]
+set key left top
+plot 'from2d.st.ter.nd' u 1:2, 'to2d.un.ter.nd' u 1:2, 'to2d.st.ter.cc' u 1:2, 'to2d.st.ter.nd' u 1:2, 'to2d.st.ter.mac' u 1:2, 'to2d.st.ter.cc' u 1:2, 'to2d.st.ter.nd' u 1:2, 'to2d.st.ter.mac' u 1:2, 'to3d.st.ter.cc' u 2:3, 'to3d.st.ter.nd' u 2:3, 'to3d.st.ter.mac' u 2:3
+

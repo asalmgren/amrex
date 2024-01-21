@@ -40,10 +40,12 @@ InitParticles (MultiFab& a_z_loc)
             int i = iv[0]; int j = iv[1];
 #if (AMREX_SPACEDIM == 2)
             int k = 0;
-            if (iv[0] == 0 && iv[1] >= dom_lo.y && iv[1] <= dom_hi.y/2) {
+            if (iv[0] == 0 && iv[1] >= dom_lo.y && iv[1] <= dom_hi.y/2) { // use this for stretched
+            // if (iv[0] == 0 && iv[1] >= dom_hi.y/2 && iv[1] <= dom_hi.y) { //use this for hill
 #elif (AMREX_SPACEDIM == 3)
             int k = iv[2];
-            if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) {
+            if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) { // use this for stretched
+            // if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_hi.z/2 && iv[2] <= dom_hi.z) { //use this for hill
 #endif
 
                 // This is the physical location of the center of the cell
