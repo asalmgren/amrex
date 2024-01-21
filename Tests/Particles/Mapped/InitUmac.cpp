@@ -8,7 +8,7 @@ enum struct ProbType {
 };
 
 void
-InitUmac_map (MultiFab* umac, const MultiFab& a_xyz_loc, Geometry& /*geom*/, Real vert_vel, ProbType /*prob_type*/)
+InitUmac_map (MultiFab* umac, const MultiFab& a_xyz_loc, Geometry& /*geom*/, int flow_dir, Real vert_vel, ProbType /*prob_type*/)
 {
     BL_PROFILE("InitUmac");
 
@@ -16,42 +16,63 @@ InitUmac_map (MultiFab* umac, const MultiFab& a_xyz_loc, Geometry& /*geom*/, Rea
     // auto problo = geom.ProbLo();
 
     // For right now we just define a shear flow in x, i.e. in 3D: (u,v,w) = (u(z),0.0,0.0)
+    //                           or a shear flow in y, i.e. in 3D  (u,v,w) = (0, v(z), 0.0)
     //                                                      in 2D: (u,v)   = (u(y),0.0)
-
-    umac[1].setVal(0.);
-#if (AMREX_SPACEDIM == 3)
-    umac[2].setVal(0.);
-#endif
 
     // Decide between terrain-fittedn and fully mapped
     int zcomp = (a_xyz_loc.nComp() == 1) ? 0 : AMREX_SPACEDIM-1;
 
-    for(MFIter mfi(umac[0]); mfi.isValid(); ++mfi)
+#if (AMREX_SPACEDIM == 2)
+    for(MFIter mfi(umac[flow_dir]); mfi.isValid(); ++mfi)
     {
         const Box& tile_box  = mfi.growntilebox();
         auto height_arr = a_xyz_loc.array(mfi);
-        auto umac_x_arr = umac[0].array(mfi);
+        auto umac_arr = umac[flow_dir].array(mfi);
 
         ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             // Physical location of x-face
-#if (AMREX_SPACEDIM == 2)
-            Real z = Real(0.5)*(height_arr(i,j,k,zcomp) + height_arr(i,j+1,k,zcomp));
-#elif (AMREX_SPACEDIM == 3)
-            Real z = Real(0.25)*(height_arr(i,j,k  ,zcomp) + height_arr(i,j+1,k  ,zcomp) +
-                                 height_arr(i,j,k+1,zcomp) + height_arr(i,j+1,k+1,zcomp));
-#endif
+            Real z;
+            if (flow_dir == 0) {
+                z = Real(0.5)*(height_arr(i,j,k,zcomp) + height_arr(i,j+1,k,zcomp));
+            } else {
+                z = Real(0.5)*(height_arr(i,j,k,zcomp) + height_arr(i+1,j,k,zcomp));
+            }
+
 
             // Normal velocity on x-face based on height at face center
-            umac_x_arr(i,j,k,0) = Real(1.0) + Real(2.0) * z;
+            umac_arr(i,j,k) = Real(1.0) + Real(2.0) * z;
 
-#if (AMREX_SPACEDIM == 2)
-            if (i == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_x_arr(i,j,k) << std::endl;
-#elif (AMREX_SPACEDIM == 3)
-            if (i == 0 && j == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_x_arr(i,j,k) << std::endl;
-#endif
+            if (i == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_arr(i,j,k) << std::endl;
         });
     }
+
+#elif (AMREX_SPACEDIM == 3)
+    for(MFIter mfi(umac[flow_dir]); mfi.isValid(); ++mfi)
+        {
+        const Box& tile_box  = mfi.growntilebox();
+        auto height_arr = a_xyz_loc.array(mfi);
+        auto umac_arr = umac[flow_dir].array(mfi);
+
+        ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            // Physical location of x-face
+            Real z;
+            if (flow_dir == 0) {
+                z = Real(0.25)*(height_arr(i,j,k  ,zcomp) + height_arr(i,j+1,k  ,zcomp) +
+                                height_arr(i,j,k+1,zcomp) + height_arr(i,j+1,k+1,zcomp));
+            } else {
+                z = Real(0.25)*(height_arr(i,j,k  ,zcomp) + height_arr(i+1,j,k  ,zcomp) +
+                                height_arr(i,j,k+1,zcomp) + height_arr(i+1,j,k+1,zcomp));
+            }
+
+            // Normal velocity on x-face based on height at face center
+            umac_arr(i,j,k) = Real(1.0) + Real(2.0) * z;
+
+            if (i == 0 && j == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_arr(i,j,k) << std::endl;
+        });
+    }
+#endif
 
     //
     // Add an upward velocity to the shear flow above
@@ -71,7 +92,7 @@ InitUmac_map (MultiFab* umac, const MultiFab& a_xyz_loc, Geometry& /*geom*/, Rea
 }
 
 void
-InitUmac_reg (MultiFab* umac, Geometry& geom, Real vert_vel, ProbType /*prob_type*/)
+InitUmac_reg (MultiFab* umac, Geometry& geom, int flow_dir, Real vert_vel, ProbType /*prob_type*/)
 {
     BL_PROFILE("InitUmac");
 
@@ -79,18 +100,15 @@ InitUmac_reg (MultiFab* umac, Geometry& geom, Real vert_vel, ProbType /*prob_typ
     // auto problo = geom.ProbLo();
 
     // For right now we just define a shear flow in x, i.e. in 3D: (u,v,w) = (u(z),0.0,0.0)
+    //                           or a shear flow in y, i.e. in 3D  (u,v,w) = (0, v(z), 0.0)
     //                                                      in 2D: (u,v)   = (u(y),0.0)
 
-    umac[1].setVal(0.);
-#if (AMREX_SPACEDIM == 3)
-    umac[2].setVal(0.);
-#endif
     const auto dx = geom.CellSizeArray();
 
-    for(MFIter mfi(umac[0]); mfi.isValid(); ++mfi)
+    for(MFIter mfi(umac[flow_dir]); mfi.isValid(); ++mfi)
     {
         const Box& tile_box  = mfi.growntilebox();
-        auto umac_x_arr = umac[0].array(mfi);
+        auto umac_arr = umac[flow_dir].array(mfi);
 
         ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
@@ -102,12 +120,12 @@ InitUmac_reg (MultiFab* umac, Geometry& geom, Real vert_vel, ProbType /*prob_typ
 #endif
 
             // Normal velocity on x-face based on height at face center
-            umac_x_arr(i,j,k,0) = Real(1.0) + Real(2.0) * z;
+            umac_arr(i,j,k) = Real(1.0) + Real(2.0) * z;
 
 #if (AMREX_SPACEDIM == 2)
-            if (i == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_x_arr(i,j,k) << std::endl;
+            if (i == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_arr(i,j,k) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-            if (i == 0 && j == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_x_arr(i,j,k) << std::endl;
+            if (i == 0 && j == 0) amrex::Print() << "UMAC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << umac_arr(i,j,k) << std::endl;
 #endif
         });
     }

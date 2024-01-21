@@ -153,7 +153,11 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
 
                 if (ipass == 0)
                 {
+#if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#endif
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
                         p.rdata(dim) = p.pos(dim);
@@ -167,7 +171,11 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+#if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#endif
 
                     // also update z-coordinate here
                     IntVect iv(
@@ -175,6 +183,9 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
                                     p.idata(1),
                                     p.idata(2)));
 
+                    //
+                    // THIS IS NOT CORRECT!!!
+                    //
                     auto xlo = loc_arr(AMREX_D_DECL(iv[0]  , iv[1]  , iv[2]),0);
                     auto xhi = loc_arr(AMREX_D_DECL(iv[0]+1, iv[1]  , iv[2]),0);
                     auto ylo = loc_arr(AMREX_D_DECL(iv[0]  , iv[1]  , iv[2]),1);
@@ -247,7 +258,11 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
 
                 if (ipass == 0)
                 {
+#if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#endif
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
                         p.rdata(dim) = p.pos(dim);
@@ -261,7 +276,11 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+#if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+#endif
 
                     // also update z-coordinate here
                     IntVect iv(
@@ -269,6 +288,9 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                                     p.idata(1),
                                     p.idata(2)));
 
+                    //
+                    // THIS IS NOT CORRECT!!!
+                    //
                     auto xlo = loc_arr(AMREX_D_DECL(iv[0]  , iv[1]  , iv[2]),0);
                     auto xhi = loc_arr(AMREX_D_DECL(iv[0]+1, iv[1]  , iv[2]),0);
                     auto ylo = loc_arr(AMREX_D_DECL(iv[0]  , iv[1]  , iv[2]),1);

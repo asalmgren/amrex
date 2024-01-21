@@ -29,11 +29,22 @@ void cic_interpolate (const P& p,
                       const amrex::Array4<amrex::Real const>&  data_arr,
                       amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
 {
+    cic_interpolate_cc(p, plo, dxi, data_arr, val, M);
+}
+
+template <typename P>
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void cic_interpolate_cc (const P& p,
+                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
+                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
+                         const amrex::Array4<amrex::Real const>&  data_arr,
+                         amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
+{
     int start_comp = 0;
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheZeroVector();
-    linear_interpolate_to_particle (p, plo, dxi, &data_arr, val, &is_nodal, start_comp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle(p, plo, dxi, &data_arr, val, &is_nodal, start_comp, ncomp_per_array, num_arrays);
 }
 
 /**
@@ -51,7 +62,7 @@ void cic_interpolate_nd (const P& p,
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheUnitVector();
-    linear_interpolate_to_particle (p, plo, dxi, &data_arr, val, &is_nodal, start_comp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle(p, plo, dxi, &data_arr, val, &is_nodal, start_comp, ncomp_per_array, num_arrays);
 }
 
 /**
@@ -74,7 +85,7 @@ void mac_interpolate (const P& p,
         is_nodal[d] = amrex::IntVect::TheZeroVector();
         is_nodal[d][d] = 1;
     }
-    linear_interpolate_to_particle (p, plo, dxi, data_arr.data(), val, &is_nodal[0], start_comp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle(p, plo, dxi, data_arr.data(), val, &is_nodal[0], start_comp, ncomp_per_array, num_arrays);
 }
 
 
@@ -158,9 +169,13 @@ void cic_interpolate_mapped_z (const P& p,
                                const amrex::Array4<amrex::Real const>&  height_arr,
                                amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
 {
-    cic_interpolate_cc_mapped_z (p, plo, dxi, data_arr, height_arr, val, M);
+    cic_interpolate_cc_mapped_z(p, plo, dxi, data_arr, height_arr, val, M);
 }
 
+/**
+ \brief Linearly interpolates the mesh data to the particle position from cell-centered data
+        on a terrain-fitted grid.
+*/
 template <typename P>
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void cic_interpolate_cc_mapped_z (const P& p,
@@ -174,8 +189,8 @@ void cic_interpolate_cc_mapped_z (const P& p,
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheZeroVector();
-    linear_interpolate_to_particle_z (p, plo, dxi, &data_arr, height_arr,
-                                      val, &is_nodal, icomp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle_z(p, plo, dxi, &data_arr, height_arr,
+                                     val, &is_nodal, icomp, ncomp_per_array, num_arrays);
 }
 
 /**
@@ -195,8 +210,8 @@ void cic_interpolate_nd_mapped_z (const P& p,
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheUnitVector();
-    linear_interpolate_to_particle_z (p, plo, dxi, &data_arr, height_arr,
-                                      val, &is_nodal, icomp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle_z(p, plo, dxi, &data_arr, height_arr,
+                                     val, &is_nodal, icomp, ncomp_per_array, num_arrays);
 }
 
 /**
@@ -221,8 +236,8 @@ void mac_interpolate_mapped_z (const P& p,
         is_nodal[d] = amrex::IntVect::TheZeroVector();
         is_nodal[d][d] = 1;
     }
-    linear_interpolate_to_particle_z (p, plo, dxi, &data_arr[0], height_arr,
-                                      val, &is_nodal[0], icomp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle_z(p, plo, dxi, &data_arr[0], height_arr,
+                                     val, &is_nodal[0], icomp, ncomp_per_array, num_arrays);
 }
 
 /**
@@ -249,10 +264,9 @@ void linear_interpolate_to_particle_z (const P& p,
     {
         AMREX_D_TERM(amrex::Real lx = (Real(p.pos(0))-plo[0])*dxi[0] - static_cast<Real>(!is_nodal[d][0])*Real(0.5);,
                      amrex::Real ly = (Real(p.pos(1))-plo[1])*dxi[1] - static_cast<Real>(!is_nodal[d][1])*Real(0.5);,
-                     amrex::Real lz = (Real(p.pos(2))-plo[2])*dxi[2] - static_cast<Real>(!is_nodal[d][2])*Real(0.5));
+                     /*amrex::Real lz = (Real(p.pos(2))-plo[2])*dxi[2] - static_cast<Real>(!is_nodal[d][2])*Real(0.5)*/);
 
         int const i0 = static_cast<int>(amrex::Math::floor(lx));
-        int const j  = static_cast<int>(amrex::Math::floor(ly));
         int k = 0; // temporary for 2D
 
 //        AMREX_D_TERM(amrex::Real xoff =  static_cast<Real>(!is_nodal[d][0])*Real(0.5);,
@@ -261,6 +275,8 @@ void linear_interpolate_to_particle_z (const P& p,
 //
 
 #if (AMREX_SPACEDIM == 2)
+
+        int const j  = static_cast<int>(amrex::Math::floor(ly));
 
         amrex::Real hlo_xlo = 0.25 * ( height_arr(i0                       , j                     , k)
                                    +   height_arr(i0 + (!(is_nodal[d][0])) , j                     , k)
@@ -301,9 +317,6 @@ void linear_interpolate_to_particle_z (const P& p,
 
         amrex::Real hint_ilo = (p.pos(1) - y1) / (y2 - y1);
         amrex::Real hint_ihi = (p.pos(1) - y3) / (y4 - y3);
-        // REVA -- CHECK THIS
-        //amrex::Real sy[] = { amrex::Real(1.) - hint_ilo, hint_ilo,
-        //                     amrex::Real(1.) - hint_ihi, hint_ihi};
         amrex::Real sy[] = { amrex::Real(1.) - hint_ilo, amrex::Real(1.) - hint_ihi,
                                                hint_ilo,                   hint_ihi};
 
@@ -492,13 +505,8 @@ void linear_interpolate_to_particle_z (const P& p,
           amrex::Real hint_ihijlo = ( p.pos(2) - ht[4] ) / (ht[5] - ht[4]);
           amrex::Real hint_ihijhi = ( p.pos(2) - ht[6] ) / (ht[7] - ht[6]);
 
-          // REVA -- CHECK THIS
-          //amrex::Real sz[] = { amrex::Real(1.) - hint_ilojlo, hint_ilojlo,
-          //                     amrex::Real(1.) - hint_ilojhi, hint_ilojhi,
-          //                     amrex::Real(1.) - hint_ihijlo, hint_ihijlo,
-          //                     amrex::Real(1.) - hint_ihijhi, hint_ihijhi};
           amrex::Real sz[] = { amrex::Real(1.) - hint_ilojlo,
-                               amrex::Real(1.) - hint_ihijlo, 
+                               amrex::Real(1.) - hint_ihijlo,
                                amrex::Real(1.) - hint_ilojhi,
                                amrex::Real(1.) - hint_ihijhi,
                                                  hint_ilojlo,
@@ -527,17 +535,15 @@ void linear_interpolate_to_particle_z (const P& p,
 //                     amrex::Real y = p.pos(1) - y1;,
 //                     amrex::Real z = p.pos(2) - z1;);
 //
-        if (p.pos(1) < 0.02) amrex::Print() << "NODAL " << is_nodal[0] << " " << is_nodal[1] << std::endl;
         for (int comp = start_comp; comp < ncomp; ++comp) {
             val[ctr] = amrex::ParticleReal(0.);
 #if (AMREX_SPACEDIM == 2)
             // interpolate 4 points in y
+            int k0 = 0;
             int sy_ctr = 0;
             for (int jj = 0; jj <= 1; ++jj) {
                 for (int ii = 0; ii <=1; ++ii) {
                     val[ctr] += static_cast<ParticleReal>( (data_arr[d])(i0+ii, j0+jj, k0 ,comp)*sx[ii]*sy[sy_ctr] );
-                    if (p.pos(1) < 0.02) amrex::Print() << "MAKING V WITH " << IntVect(i0+ii,j0+jj) << " " << (data_arr[d])(i0+ii, j0+jj, k0 ,comp) <<
-                         " and weights " << sx[ii] << " " << sy[sy_ctr] << std::endl;
                     ++sy_ctr;
                 }
             }
@@ -589,15 +595,31 @@ void cic_interpolate_mapped (const P& p,
                              amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
                              amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
                              const amrex::Array4<amrex::Real const>&  data_arr,
-                             const amrex::Array4<amrex::Real const>&  loc_arr,
+                             const amrex::Array4<amrex::Real const>&  height_arr,
                              amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
+{
+    cic_interpolate_cc_mapped(p, plo, dxi, data_arr, height_arr, val, M);
+}
+
+/**
+ \brief Linearly interpolates the mesh data to the particle position from cell-centered data
+        on a general mapped grid.
+*/
+template <typename P>
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void cic_interpolate_cc_mapped (const P& p,
+                                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
+                                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
+                                const amrex::Array4<amrex::Real const>&  data_arr,
+                                const amrex::Array4<amrex::Real const>&  loc_arr,
+                                amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
 {
     int icomp = 0;
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheZeroVector();
-    linear_interpolate_to_particle_mapped (p, plo, dxi, &data_arr, loc_arr,
-                                           val, &is_nodal, icomp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle_mapped(p, plo, dxi, &data_arr, loc_arr,
+                                          val, &is_nodal, icomp, ncomp_per_array, num_arrays);
 }
 
 /**
@@ -617,8 +639,8 @@ void cic_interpolate_nd_mapped (const P& p,
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheUnitVector();
-    linear_interpolate_to_particle_mapped (p, plo, dxi, &data_arr, loc_arr,
-                                           val, &is_nodal, icomp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle_mapped(p, plo, dxi, &data_arr, loc_arr,
+                                          val, &is_nodal, icomp, ncomp_per_array, num_arrays);
 }
 
 /**
@@ -643,8 +665,8 @@ void mac_interpolate_mapped (const P& p,
         is_nodal[d] = amrex::IntVect::TheZeroVector();
         is_nodal[d][d] = 1;
     }
-    linear_interpolate_to_particle_mapped (p, plo, dxi, &data_arr, loc_arr,
-                                           val, &is_nodal, icomp, ncomp_per_array, num_arrays);
+    linear_interpolate_to_particle_mapped(p, plo, dxi, &data_arr, loc_arr,
+                                          val, &is_nodal, icomp, ncomp_per_array, num_arrays);
 }
 
 /**

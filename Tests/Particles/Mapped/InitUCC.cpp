@@ -8,7 +8,7 @@ enum struct ProbType {
 };
 
 void
-InitUCC_map (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, Real vert_vel, ProbType prob_type)
+InitUCC_map (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type)
 {
     BL_PROFILE("InitUCC_map");
 
@@ -60,7 +60,7 @@ InitUCC_map (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, Real vert
                 ucc_arr(i,j,k,1) = -rad*cos(theta);
 
 #if (AMREX_SPACEDIM == 3)
-                Real z = loc_arr(i,j,k,2);
+                // Real z = loc_arr(i,j,k,2);
                 ucc_arr(i,j,k,2) =  0.0;
 #endif
 
@@ -94,15 +94,15 @@ InitUCC_map (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, Real vert
 
                 // Horizontal velocity u(z)
                 // Vertical   velocity constant
-                u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
-                u_arr(i,j,k,zdir) = vert_vel;
+                u_arr(i,j,k,flow_dir) = Real(1.0) + Real(2.0) * z;
+                u_arr(i,j,k,zdir    ) = vert_vel;
 
 #if (AMREX_SPACEDIM == 2)
                 if (i == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
-                                                        u_arr(i,j,k) << " " << u_arr(i,j,k,zdir) << std::endl;
+                                                        u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
                 if (i == 0 && j == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
-                                                        u_arr(i,j,k) <<" " << u_arr(i,j,k,zdir) <<  std::endl;
+                                                        u_arr(i,j,k,flow_dir) <<" " << u_arr(i,j,k,zdir) <<  std::endl;
 #endif
             });
         }
@@ -110,7 +110,7 @@ InitUCC_map (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, Real vert
 }
 
 void
-InitUCC_reg (MultiFab& ucc, Geometry& geom, Real vert_vel, ProbType /*prob_type*/)
+InitUCC_reg (MultiFab& ucc, Geometry& geom, int flow_dir, Real vert_vel, ProbType /*prob_type*/)
 {
     BL_PROFILE("InitUCC_reg");
 
@@ -135,15 +135,15 @@ InitUCC_reg (MultiFab& ucc, Geometry& geom, Real vert_vel, ProbType /*prob_type*
 
             // Horizontal velocity u(z)
             // Vertical   velocity constant
-            u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
-            u_arr(i,j,k,zdir) = vert_vel;
+            u_arr(i,j,k,flow_dir) = Real(1.0) + Real(2.0) * z;
+            u_arr(i,j,k,zdir    ) = vert_vel;
 
 #if (AMREX_SPACEDIM == 2)
                 if (i == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
-                                                        u_arr(i,j,k) << " " << u_arr(i,j,k,zdir) << std::endl;
+                                                        u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
                 if (i == 0 && j == 0) amrex::Print() << "UCC AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " <<
-                                                        u_arr(i,j,k) <<" " << u_arr(i,j,k,zdir) <<  std::endl;
+                                                        u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) <<  std::endl;
 #endif
         });
     }

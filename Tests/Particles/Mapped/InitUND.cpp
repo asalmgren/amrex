@@ -8,7 +8,7 @@ enum struct ProbType {
 };
 
 void
-InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, Real vert_vel, ProbType prob_type)
+InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type)
 {
     BL_PROFILE("InitUND_map");
 
@@ -55,7 +55,7 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, Real vert
                 und_arr(i,j,k,1) = -rad*cos(theta);
 
 #if (AMREX_SPACEDIM == 3)
-                Real z = loc_arr(i,j,k,2);
+                // Real z = loc_arr(i,j,k,2);
                 und_arr(i,j,k,2) =  0.0;
 #endif
 
@@ -88,13 +88,13 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, Real vert
 
                 // Horizontal velocity u(z)
                 // Vertical   velocity constant
-                u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
-                u_arr(i,j,k,zdir) = vert_vel;
+                u_arr(i,j,k,flow_dir) = Real(1.0) + Real(2.0) * z;
+                u_arr(i,j,k,zdir    ) = vert_vel;
 
 #if (AMREX_SPACEDIM == 2)
-                if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+                if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-                if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+                if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #endif
             });
         }
@@ -102,7 +102,7 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, Real vert
 }
 
 void
-InitUND_reg (MultiFab& und, Geometry& geom, Real vert_vel, ProbType /*prob_type*/)
+InitUND_reg (MultiFab& und, Geometry& geom, int flow_dir,  Real vert_vel, ProbType /*prob_type*/)
 {
     BL_PROFILE("InitUND_reg");
 
@@ -130,13 +130,13 @@ InitUND_reg (MultiFab& und, Geometry& geom, Real vert_vel, ProbType /*prob_type*
 
             // Horizontal velocity u(z)
             // Vertical   velocity constant
-            u_arr(i,j,k,0   ) = Real(1.0) + Real(2.0) * z;
-            u_arr(i,j,k,zdir) = vert_vel;
+            u_arr(i,j,k,flow_dir) = Real(1.0) + Real(2.0) * z;
+            u_arr(i,j,k,zdir    ) = vert_vel;
 
 #if (AMREX_SPACEDIM == 2)
-            if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+            if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-            if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,0) << " " << u_arr(i,j,k,zdir) << std::endl;
+            if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #endif
         });
     }

@@ -5,6 +5,6 @@ num_ppc = 1
 nsteps = 20 
 nlevs = 1
 
-grid_type      = terrain
-advection_type = cc
-prob_type      = unstretched
+grid_type = terrain
+vel_type  = cc
+prob_type = stretched

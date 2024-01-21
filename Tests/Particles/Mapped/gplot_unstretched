@@ -1,3 +1,4 @@
 set yrange [0:1]
-plot 'from.un.reg.cc' u 1:2, 'to.un.reg.cc' u 1:2, 'to.un.reg.nd' u 1:2, 'to.un.reg.mac' u 1:2, 'to.un.ter.cc' u 1:2, 'to.un.ter.nd' u 1:2, 'to.un.ter.mac' u 1:2
+set key left top
+plot 'from2d.un.reg.nd' u 1:2, 'to2d.un.reg.cc' u 1:2, 'to2d.un.reg.nd' u 1:2, 'to2d.un.reg.mac' u 1:2, 'to2d.un.ter.cc' u 1:2, 'to2d.un.ter.nd' u 1:2, 'to2d.un.ter.mac' u 1:2, 'to3d.un.reg.cc' u 1:2, 'to3d.un.reg.nd' u 1:2, 'to3d.un.reg.mac' u 1:2, 'to3d.un.ter.cc' u 1:2, 'to3d.un.ter.nd' u 1:2, 'to3d.un.ter.mac' u 1:2
 
