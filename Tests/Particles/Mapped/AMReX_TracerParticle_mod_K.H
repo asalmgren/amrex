@@ -560,21 +560,6 @@ void linear_interpolate_to_particle_z (const P& p,
                 }
             }
 #endif
-//#if (AMREX_SPACEDIM == 2)
-//            f1 = data_arr(i0  ,j0  ,k0);
-//            f2 = data_arr(i0+1,j0  ,k0) - f1;
-//            f3 = data_arr(i0  ,j0+1,k0) - f1;
-//            f4 = data_arr(i0+1,j0+1,k0) - f1;
-//
-//            amrex::Real det = -x3*y2*(y3 - y4);
-//
-//            amrex::Real b = ( -y2*y3*f4 + y2*y4*f3         ) / det;
-//            amrex::Real c = ( -x3*y3*f2 + x3*y4*f2         ) / det;
-//            amrex::Real d = ( y3*f2 + y2*f4 - y4*f2 - y2*f3) / det;
-//
-//            val[ctr] = f1 + b*x + c*y + d*x*y;
-//#elif (AMREX_SPACEDIM == 3)
-//#endif
             ctr++;
         } // ncomp
     } // d
@@ -592,13 +577,11 @@ void linear_interpolate_to_particle_z (const P& p,
 template <typename P>
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void cic_interpolate_mapped (const P& p,
-                             amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
-                             amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
                              const amrex::Array4<amrex::Real const>&  data_arr,
                              const amrex::Array4<amrex::Real const>&  height_arr,
                              amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
 {
-    cic_interpolate_cc_mapped(p, plo, dxi, data_arr, height_arr, val, M);
+    cic_interpolate_cc_mapped(p, data_arr, height_arr, val, M);
 }
 
 /**
@@ -608,17 +591,16 @@ void cic_interpolate_mapped (const P& p,
 template <typename P>
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void cic_interpolate_cc_mapped (const P& p,
-                                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
-                                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
                                 const amrex::Array4<amrex::Real const>&  data_arr,
                                 const amrex::Array4<amrex::Real const>&  loc_arr,
                                 amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
 {
+    amrex::Abort("This is not implemented yet");
     int icomp = 0;
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheZeroVector();
-    linear_interpolate_to_particle_mapped(p, plo, dxi, &data_arr, loc_arr,
+    linear_interpolate_to_particle_mapped(p, &data_arr, loc_arr,
                                           val, &is_nodal, icomp, ncomp_per_array, num_arrays);
 }
 
@@ -629,8 +611,6 @@ void cic_interpolate_cc_mapped (const P& p,
 template <typename P>
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void cic_interpolate_nd_mapped (const P& p,
-                                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
-                                amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
                                 const amrex::Array4<amrex::Real const>&  data_arr,
                                 const amrex::Array4<amrex::Real const>&  loc_arr,
                                 amrex::ParticleReal * val, int M = AMREX_SPACEDIM)
@@ -639,33 +619,7 @@ void cic_interpolate_nd_mapped (const P& p,
     int ncomp_per_array = M;
     int num_arrays = 1;
     IntVect is_nodal = amrex::IntVect::TheUnitVector();
-    linear_interpolate_to_particle_mapped(p, plo, dxi, &data_arr, loc_arr,
-                                          val, &is_nodal, icomp, ncomp_per_array, num_arrays);
-}
-
-/**
- \brief Linearly interpolates the mesh data to the particle position from face-centered data
-        on a general mapped grid.
-        The nth component of the data_arr array is nodal in the nth direction, and cell-centered in the others.
-*/
-template <typename P>
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void mac_interpolate_mapped (const P& p,
-                             amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
-                             amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
-                             amrex::GpuArray<amrex::Array4<amrex::Real const>,AMREX_SPACEDIM> const& data_arr,
-                             const amrex::Array4<amrex::Real const>&  loc_arr,
-                             amrex::ParticleReal * val)
-{
-    int icomp = 0;
-    int ncomp_per_array = 1;
-    int num_arrays = AMREX_SPACEDIM;
-    IntVect is_nodal[AMREX_SPACEDIM];
-    for (int d=0; d < AMREX_SPACEDIM; ++d) {
-        is_nodal[d] = amrex::IntVect::TheZeroVector();
-        is_nodal[d][d] = 1;
-    }
-    linear_interpolate_to_particle_mapped(p, plo, dxi, &data_arr, loc_arr,
+    linear_interpolate_to_particle_mapped(p, &data_arr, loc_arr,
                                           val, &is_nodal, icomp, ncomp_per_array, num_arrays);
 }
 
@@ -677,8 +631,6 @@ void mac_interpolate_mapped (const P& p,
 template <typename P>
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void linear_interpolate_to_particle_mapped (const P& p,
-                                            amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& plo,
-                                            amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxi,
                                             const Array4<amrex::Real const>* data_arr,
                                             const amrex::Array4<amrex::Real const>&  loc_arr,
                                             amrex::ParticleReal * val,
@@ -686,7 +638,58 @@ void linear_interpolate_to_particle_mapped (const P& p,
                                             int start_comp, int ncomp, int num_arrays)
 {
     AMREX_ASSERT(val != nullptr);
-    amrex::Abort("This is not implemented yet");
+
+    AMREX_ASSERT(is_nodal[0][0] == 1);
+    AMREX_ASSERT(is_nodal[0][1] == 1);
+#if (AMREX_SPACEDIM == 3)
+    AMREX_ASSERT(is_nodal[0][2] == 1);
+#endif
+
+    AMREX_ASSERT(num_arrays == 1);
+    int n = 0;
+
+    for (int comp = start_comp; comp < ncomp; ++comp) {
+
+        int i = p.idata(0);
+        int j = p.idata(1);
+
+#if (AMREX_SPACEDIM == 2)
+        // Value of data at surrounding nodes
+        amrex::Real f1 = (data_arr[n])(i  ,j  ,0,comp);
+        amrex::Real f2 = (data_arr[n])(i  ,j+1,0,comp) - f1;
+        amrex::Real f3 = (data_arr[n])(i+1,j  ,0,comp) - f1;
+        amrex::Real f4 = (data_arr[n])(i+1,j+1,0,comp) - f1;
+
+        // Node locations
+        amrex::Real x1 =  loc_arr(i  ,j  ,0,0);
+        amrex::Real x2 =  loc_arr(i  ,j+1,0,0) - x1;
+        amrex::Real x3 =  loc_arr(i+1,j  ,0,0) - x1;
+        amrex::Real x4 =  loc_arr(i+1,j+1,0,0) - x1;
+
+        amrex::Real y1 =  loc_arr(i  ,j  ,0,1);
+        amrex::Real y2 =  loc_arr(i  ,j+1,0,1) - y1;
+        amrex::Real y3 =  loc_arr(i+1,j  ,0,1) - y1;
+        amrex::Real y4 =  loc_arr(i+1,j+1,0,1) - y1;
+
+        // Particle location
+        amrex::Real x = p.pos(0) - x1;
+        amrex::Real y = p.pos(1) - y1;
+
+        amrex::Real det = x2*x4*y3*(y2 - y4) - x3*x4*y2*(y3 - y4) - x2*x3*(y2 - y3)*y4;
+
+        amrex::Real b = (  f4*(x2*y2*y3 - x3*y2*y3) + (f2*(x3 - x4)*y3)*y4 + f3*(-(x2*y2*y4) + x4*y2*y4) ) / det;
+        amrex::Real c = ( -f2*x3*x4*y3 + f4*x2*x3*(-y2 + y3) + f3*x2*x4*(y2 - y4) + f2*x3*x4*y4          ) / det;
+        amrex::Real d = (  f2*x4*y3 + f4*(x3*y2 - x2*y3) - f2*x3*y4 + f3*(-(x4*y2) + x2*y4)              ) / det;
+
+        amrex::Real f = b*x + c*y + d*x*y;
+
+#elif (AMREX_SPACEDIM == 3)
+        int k = p.idata(2);
+        amrex::Abort("This is not implemented yet");
+#endif
+
+        val[comp-start_comp] = f1 + f;
+    } // comp
 }
 
 }  // namespace amrex

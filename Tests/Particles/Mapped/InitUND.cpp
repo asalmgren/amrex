@@ -12,14 +12,12 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, int flow_
 {
     BL_PROFILE("InitUND_map");
 
-    auto probhi = geom.ProbHi();
-    auto problo = geom.ProbLo();
+    auto probhi = geom.ProbHiArray();
+    auto problo = geom.ProbLoArray();
 
     // Center of the annulus
     Real cx = 0.5 * (problo[0]+probhi[0]);
     Real cy = 0.5 * (problo[1]+probhi[1]);
-
-    amrex::Print() << "UND NG " << und.nGrow() << std::endl;
 
     //
     // ANNULUS
@@ -92,9 +90,11 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, int flow_
                 u_arr(i,j,k,zdir    ) = vert_vel;
 
 #if (AMREX_SPACEDIM == 2)
-                if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
+                if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z
+                                           << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-                if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
+                if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z
+                                                     << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #endif
             });
         }
@@ -106,7 +106,7 @@ InitUND_reg (MultiFab& und, Geometry& geom, int flow_dir,  Real vert_vel, ProbTy
 {
     BL_PROFILE("InitUND_reg");
 
-    const auto problo = geom.ProbLo();
+    const auto problo = geom.ProbLoArray();
     const auto dx     = geom.CellSizeArray();
 
     int zdir  = AMREX_SPACEDIM - 1;
@@ -134,9 +134,11 @@ InitUND_reg (MultiFab& und, Geometry& geom, int flow_dir,  Real vert_vel, ProbTy
             u_arr(i,j,k,zdir    ) = vert_vel;
 
 #if (AMREX_SPACEDIM == 2)
-            if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
+            if (i == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z
+                                       << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-            if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
+            if (i == 0 && j == 0) amrex::Print() << "UND AT " << IntVect(AMREX_D_DECL(i,j,k)) << " " << z
+                                                 << " " << u_arr(i,j,k,flow_dir) << " " << u_arr(i,j,k,zdir) << std::endl;
 #endif
         });
     }

@@ -21,8 +21,8 @@ InitHill (MultiFab& a_xyz_loc, Geometry& geom)
     const int zdir = AMREX_SPACEDIM-1;
 
     auto domain = geom.Domain();
-    auto problo = geom.ProbLo();
-    auto probhi = geom.ProbHi();
+    auto problo = geom.ProbLoArray();
+    auto probhi = geom.ProbHiArray();
     const auto dx = geom.CellSizeArray();
 
     int nz = domain.length()[zdir];

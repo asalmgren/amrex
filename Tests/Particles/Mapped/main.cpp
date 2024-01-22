@@ -288,8 +288,10 @@ void Test()
 
         if (params.grid_type == GridType::Regular) {
             InitUmac_reg(&umac[0],          geom[lev], flow_dir, vert_vel, params.prob_type);
-        } else {
+        } else if (params.grid_type == GridType::Terrain) {
             InitUmac_map(&umac[0], a_z_loc, geom[lev], flow_dir, vert_vel, params.prob_type);
+        } else {
+            amrex::Error("Mapped grids aren't allowed with MAC velocities");
         }
         umac[0].FillBoundary(geom[lev].periodicity());
         umac[1].FillBoundary(geom[lev].periodicity());
@@ -314,8 +316,10 @@ void Test()
 
         if (params.grid_type == GridType::Regular) {
             InitUND_reg(und,          geom[lev], flow_dir, vert_vel, params.prob_type);
-        } else {
+        } else if (params.grid_type == GridType::Terrain) {
             InitUND_map(und, a_z_loc, geom[lev], flow_dir, vert_vel, params.prob_type);
+        } else if (params.grid_type == GridType::Mapped) {
+            InitUND_map(und, a_xyz_loc, geom[lev], flow_dir, vert_vel, params.prob_type);
         }
         und.FillBoundary(geom[lev].periodicity());
 

@@ -18,7 +18,7 @@ InitParticles ()
 
     const int lev = 0;
 
-    //auto problo = this->ParticleContainerBase::Geom(0).ProbLo();
+    //auto problo = this->ParticleContainerBase::Geom(0).ProbLoArray();
 
     const auto dx     = Geom(lev).CellSizeArray();
     const auto domain = Geom(lev).Domain();

@@ -12,8 +12,8 @@ InitUCC_map (MultiFab& ucc, const MultiFab& a_xyz_loc, Geometry& geom, int flow_
 {
     BL_PROFILE("InitUCC_map");
 
-    auto probhi = geom.ProbHi();
-    auto problo = geom.ProbLo();
+    auto probhi = geom.ProbHiArray();
+    auto problo = geom.ProbLoArray();
 
     // Center of the annulus
     Real cx = 0.5 * (problo[0]+probhi[0]);
@@ -114,7 +114,7 @@ InitUCC_reg (MultiFab& ucc, Geometry& geom, int flow_dir, Real vert_vel, ProbTyp
 {
     BL_PROFILE("InitUCC_reg");
 
-    const auto problo = geom.ProbLo();
+    const auto problo = geom.ProbLoArray();
     const auto dx     = geom.CellSizeArray();
 
     int zdir = AMREX_SPACEDIM - 1;

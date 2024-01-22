@@ -18,7 +18,7 @@ InitParticles (MultiFab& a_z_loc)
 
     const int lev = 0;
 
-    //auto plo = this->ParticleContainerBase::Geom(0).ProbLo();
+    //auto plo = this->ParticleContainerBase::Geom(0).ProbLoArray();
 
     const auto dx     = Geom(lev).CellSizeArray();
     const auto domain = Geom(lev).Domain();

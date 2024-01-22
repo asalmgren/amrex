@@ -12,9 +12,6 @@ InitUmac_map (MultiFab* umac, const MultiFab& a_xyz_loc, Geometry& /*geom*/, int
 {
     BL_PROFILE("InitUmac");
 
-    // auto probhi = geom.ProbHi();
-    // auto problo = geom.ProbLo();
-
     // For right now we just define a shear flow in x, i.e. in 3D: (u,v,w) = (u(z),0.0,0.0)
     //                           or a shear flow in y, i.e. in 3D  (u,v,w) = (0, v(z), 0.0)
     //                                                      in 2D: (u,v)   = (u(y),0.0)
@@ -95,9 +92,6 @@ void
 InitUmac_reg (MultiFab* umac, Geometry& geom, int flow_dir, Real vert_vel, ProbType /*prob_type*/)
 {
     BL_PROFILE("InitUmac");
-
-    // auto probhi = geom.ProbHi();
-    // auto problo = geom.ProbLo();
 
     // For right now we just define a shear flow in x, i.e. in 3D: (u,v,w) = (u(z),0.0,0.0)
     //                           or a shear flow in y, i.e. in 3D  (u,v,w) = (0, v(z), 0.0)

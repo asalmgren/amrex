@@ -14,9 +14,7 @@ InitUnstretched (MultiFab& a_xyz_loc, Geometry& geom)
     //           AMREX_SPACEDIM-1 for generalized mapped
     int z_comp = a_xyz_loc.nComp() - 1;
 
-    // auto domain = geom.Domain();
-    auto problo = geom.ProbLo();
-    // auto probhi = geom.ProbHi();
+    auto problo   = geom.ProbLoArray();
     const auto dx = geom.CellSizeArray();
 
     for (MFIter mfi(a_xyz_loc); mfi.isValid(); ++mfi)
@@ -41,7 +39,7 @@ InitUnstretched (MultiFab& a_xyz_loc, Geometry& geom)
 
             // Generalized mapped coordinates -- this is x
             if (z_comp > 0) {
-                for (int j = tlo.y; j <= thi.y; j++)
+                for (int j = tlo.y-1; j <= thi.y+1; j++)
                 {
                     loc_arr(i,j,0,0) = problo[0] + static_cast<Real>(i)  * dx[0];
                 }
@@ -50,10 +48,10 @@ InitUnstretched (MultiFab& a_xyz_loc, Geometry& geom)
             if (verbose && i == 0) {
                 for (int j = tlo.y-1; j <= thi.y+1; j++) {
                     if (j < 0) {
-                        amrex::Print() << "INITIAL MAPPING AT " << IntVect(i,j) << " " << loc_arr(i,j,0,0) <<  std::endl;
+                        amrex::Print() << "INITIAL MAPPING AT " << IntVect(i,j) << " " << loc_arr(i,j,0,z_comp) << std::endl;
                     } else {
-                        amrex::Print() << "INITIAL MAPPING AT " << IntVect(i,j) << " " << loc_arr(i,j,0,0) <<
-                                          " with dz = " << loc_arr(i,j,0,0) - loc_arr(i,j-1,0,0) << std::endl;
+                        amrex::Print() << "INITIAL MAPPING AT " << IntVect(i,j) << " " << loc_arr(i,j,0,z_comp) <<
+                                          " with dz = " << loc_arr(i,j,0,z_comp) - loc_arr(i,j-1,0,z_comp) << std::endl;
                     }
                 } // j
             } // i

@@ -13,8 +13,8 @@ InitAnnulus (MultiFab& a_xyz_loc, Geometry& geom)
 #endif
 
     auto domain = geom.Domain();
-    auto probhi = geom.ProbHi();
-    auto problo = geom.ProbLo();
+    auto probhi = geom.ProbHiArray();
+    auto problo = geom.ProbLoArray();
 
     Real ilen = static_cast<Real>(domain.length(0));
     Real jlen = static_cast<Real>(domain.length(1));
