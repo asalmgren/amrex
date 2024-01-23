@@ -535,6 +535,7 @@ void linear_interpolate_to_particle_mapped (const P& p,
         amrex::Real f = b*x + c*y + d*x*y;
         val[comp-start_comp] = f1 + f;
 
+        val[comp-start_comp] = f1 + f;
 #elif (AMREX_SPACEDIM == 3)
 
         int k = p.idata(2);
