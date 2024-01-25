@@ -51,7 +51,6 @@ InitParticles (MultiFab& a_xyz_loc)
                                +loc_arr(i+1,j,k,0) + loc_arr(i+1,j+1,k,0));
                 Real y = 0.25*( loc_arr(i  ,j,k,1) + loc_arr(i  ,j+1,k,1)
                                +loc_arr(i+1,j,k,1) + loc_arr(i+1,j+1,k,1));
-                amrex::Print() << "Particle at (x,y) OF " << iv << " " << x << " " << y << std::endl;
 
                 ParticleType p;
                 p.id()  = ParticleType::NextID();
@@ -65,12 +64,18 @@ InitParticles (MultiFab& a_xyz_loc)
                 p.idata(MappedIntIdx::i) = iv[0];  // particles carry their i-index
                 p.idata(MappedIntIdx::j) = iv[1];  // particles carry their j-index
 
-#if (AMREX_SPACEDIM == 3)
-                Real z = Real(0.25)*(loc_arr(i  ,j,k,2) + loc_arr(i  ,j+1,k,2) +
-                                     loc_arr(i+1,j,k,2) + loc_arr(i+1,j+1,k,2));
+#if (AMREX_SPACEDIM == 2)
+                amrex::Print() << "Particle at (x,y) OF " << iv << " " << x << " " << y << std::endl;
+#elif (AMREX_SPACEDIM == 3)
+                Real z = Real(0.125)*(loc_arr(i  ,j,k  ,2) + loc_arr(i  ,j+1,k  ,2) +
+                                      loc_arr(i+1,j,k  ,2) + loc_arr(i+1,j+1,k  ,2) +
+                                      loc_arr(i  ,j,k+1,2) + loc_arr(i  ,j+1,k+1,2) +
+                                      loc_arr(i+1,j,k+1,2) + loc_arr(i+1,j+1,k+1,2));
                 p.pos(2) = z;
                 p.rdata(MappedRealIdx::vz) = Real(0.);
                 p.idata(MappedIntIdx::k) = iv[2];  // particles carry their k-index
+
+                amrex::Print() << "Particle at (x,y,z) OF " << iv << " " << x << " " << y << " " << z << std::endl;
 #endif
 
                 host_particles.push_back(p);
@@ -124,6 +129,9 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
     Abort("Not implemented yet!");
     AMREX_ASSERT(lev >= 0 && lev < GetParticles().size());
 
+    const auto plo = this->ParticleContainerBase::Geom(0).ProbLoArray();
+    const auto dxi = this->ParticleContainerBase::Geom(0).InvCellSizeArray();
+
     for (int ipass = 0; ipass < 2; ipass++)
     {
 #ifdef AMREX_USE_OMP
@@ -160,6 +168,7 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
+                    update_mapped_idata(p,plo,dxi,loc_arr);
                 }
                 else
                 {
@@ -168,45 +177,12 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+                    update_mapped_idata(p,plo,dxi,loc_arr);
+
 #if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
-#endif
-
-                    // also update z-coordinate here
-                    IntVect iv(
-                       AMREX_D_DECL(p.idata(0),
-                                    p.idata(1),
-                                    p.idata(2)));
-
-                    //
-                    // THIS IS NOT CORRECT!!!
-                    //
-                    auto xlo = loc_arr(AMREX_D_DECL(iv[0]  , iv[1]  , iv[2]),0);
-                    auto xhi = loc_arr(AMREX_D_DECL(iv[0]+1, iv[1]  , iv[2]),0);
-                    auto ylo = loc_arr(AMREX_D_DECL(iv[0]  , iv[1]  , iv[2]),1);
-                    auto yhi = loc_arr(AMREX_D_DECL(iv[0]  , iv[1]+1, iv[2]),1);
-
-                    if (p.pos(0) > xhi) { // need to be careful here
-                        p.idata(0) += 1;
-                    } else if (p.pos(0) <= xlo) {
-                        p.idata(0) -= 1;
-                    }
-                    if (p.pos(1) > yhi) { // need to be careful here
-                        p.idata(1) += 1;
-                    } else if (p.pos(1) <= ylo) {
-                        p.idata(1) -= 1;
-                    }
-
-#if (AMREX_SPACEDIM == 3)
-                    auto zlo = loc_arr(iv[0], iv[1], iv[2],2);
-                    auto zhi = loc_arr(iv[0], iv[1], iv[2]+1,2);
-                    if (p.pos(2) > zhi) { // need to be careful here
-                        p.idata(2) += 1;
-                    } else if (p.pos(2) <= zlo) {
-                        p.idata(2) -= 1;
-                    }
 #endif
                 }
             });
@@ -224,6 +200,9 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
 {
     BL_PROFILE("MappedPC::AdvectWithND()");
     AMREX_ASSERT(lev >= 0 && lev < GetParticles().size());
+
+    const auto plo = this->ParticleContainerBase::Geom(0).ProbLoArray();
+    const auto dxi = this->ParticleContainerBase::Geom(0).InvCellSizeArray();
 
     for (int ipass = 0; ipass < 2; ipass++)
     {
@@ -262,6 +241,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
+                    update_mapped_idata(p,plo,dxi,loc_arr);
                 }
                 else
                 {
@@ -271,52 +251,13 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                         p.rdata(dim) = v[dim];
                     }
 #if (AMREX_SPACEDIM == 2)
-                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) <<  " WITH VEL " << v[0] << std::endl;
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) <<
+                                      " WITH VEL " << v[0] << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) <<
+                                      " WITH VEL " << v[0] << std::endl;
 #endif
-
-                    //
-                    // Update all coordinates
-                    //
-                    IntVect iv(
-                       AMREX_D_DECL(p.idata(0),
-                                    p.idata(1),
-                                    p.idata(2)));
-
-                    //
-                    // THIS IS NOT CORRECT!!!
-                    //
-#if (AMREX_SPACEDIM == 2)
-                    auto xlo = loc_arr(iv[0]  , iv[1]  , 0,0);
-                    auto xhi = loc_arr(iv[0]+1, iv[1]  , 0,0);
-                    auto ylo = loc_arr(iv[0]  , iv[1]  , 0,1);
-                    auto yhi = loc_arr(iv[0]  , iv[1]+1, 0,1);
-
-                    if (p.pos(0) > xhi) {
-                        p.idata(0) += 1;
-                    } else if (p.pos(0) <= xlo) {
-                        p.idata(0) -= 1;
-                    }
-                    if (p.pos(1) > yhi) {
-                        p.idata(1) += 1;
-                    } else if (p.pos(1) <= ylo) {
-                        p.idata(1) -= 1;
-                    }
-
-#elif (AMREX_SPACEDIM == 3)
-                    auto xlo = loc_arr(iv[0]  , iv[1]  , iv[2]  ,0);
-                    auto xhi = loc_arr(iv[0]+1, iv[1]  , iv[2]  ,0);
-                    auto ylo = loc_arr(iv[0]  , iv[1]  , iv[2]  ,1);
-                    auto yhi = loc_arr(iv[0]  , iv[1]+1, iv[2]  ,1);
-                    auto zlo = loc_arr(iv[0]  , iv[1]  , iv[2]  ,2);
-                    auto zhi = loc_arr(iv[0]  , iv[1]  , iv[2]+1,2);
-                    if (p.pos(2) > zhi) { // need to be careful here
-                        p.idata(2) += 1;
-                    } else if (p.pos(2) <= zlo) {
-                        p.idata(2) -= 1;
-                    }
-#endif
+                    update_mapped_idata(p,plo,dxi,loc_arr);
                 }
             });
         } // ParIter

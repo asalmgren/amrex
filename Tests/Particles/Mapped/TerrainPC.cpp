@@ -154,9 +154,6 @@ TerrainPC::AdvectWithUmac (MultiFab* umac, int lev, Real dt, const MultiFab& a_z
         }
     }
 
-    const auto domain = Geom(lev).Domain();
-    auto dom_lo = lbound(domain);
-
     for (int ipass = 0; ipass < 2; ipass++)
     {
 #ifdef AMREX_USE_OMP
@@ -202,6 +199,7 @@ TerrainPC::AdvectWithUmac (MultiFab* umac, int lev, Real dt, const MultiFab& a_z
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
+                    update_terrain_idata(p,plo,dxi,height_arr);
                 }
                 else
                 {
@@ -210,52 +208,14 @@ TerrainPC::AdvectWithUmac (MultiFab* umac, int lev, Real dt, const MultiFab& a_z
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+                    update_terrain_idata(p,plo,dxi,height_arr);
+
 #if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 #endif
 
-#if (AMREX_SPACEDIM == 2)
-                    IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])), p.idata(0) );
-                    iv[0] += dom_lo.x;
-
-                    Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<Real>(iv[0]-dom_lo.x);
-                    auto ylo = height_arr(iv[0]  ,iv[1]  ,0) * (1.0-lx) +
-                               height_arr(iv[0]+1,iv[1]  ,0) *      lx;
-                    auto yhi = height_arr(iv[0]  ,iv[1]+1,0) * (1.0-lx) +
-                               height_arr(iv[0]+1,iv[1]+1,0) *      lx;
-
-                    if (p.pos(1) > yhi) { // need to be careful here
-                        p.idata(0) += 1;
-                    } else if (p.pos(1) <= ylo) {
-                        p.idata(0) -= 1;
-                    }
-
-#elif (AMREX_SPACEDIM == 3)
-                    IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])),
-                                int(amrex::Math::floor((p.pos(1)-plo[1])*dxi[1])),
-                                p.idata(0) );
-                    iv[0] += dom_lo.x;
-                    iv[1] += dom_lo.y;
-
-                    Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<Real>(iv[0]-dom_lo.x);
-                    Real ly = (p.pos(1)-plo[1])*dxi[1] - static_cast<Real>(iv[1]-dom_lo.y);
-                    auto zlo = height_arr(iv[0]  ,iv[1]  ,iv[2]  ) * (1.0-lx) * (1.0-ly) +
-                               height_arr(iv[0]+1,iv[1]  ,iv[2]  ) *      lx  * (1.0-ly) +
-                               height_arr(iv[0]  ,iv[1]+1,iv[2]  ) * (1.0-lx) * ly +
-                               height_arr(iv[0]+1,iv[1]+1,iv[2]  ) *      lx  * ly;
-                    auto zhi = height_arr(iv[0]  ,iv[1]  ,iv[2]+1) * (1.0-lx) * (1.0-ly) +
-                               height_arr(iv[0]+1,iv[1]  ,iv[2]+1) *      lx  * (1.0-ly) +
-                               height_arr(iv[0]  ,iv[1]+1,iv[2]+1) * (1.0-lx) * ly +
-                               height_arr(iv[0]+1,iv[1]+1,iv[2]+1) *      lx  * ly;
-
-                    if (p.pos(2) > zhi) { // need to be careful here
-                        p.idata(0) += 1;
-                    } else if (p.pos(2) <= zlo) {
-                        p.idata(0) -= 1;
-                    }
-#endif
                 }
             });
         } // pti
@@ -272,9 +232,6 @@ TerrainPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_
 {
     BL_PROFILE("TerrainPC::AdvectWithCC()");
     AMREX_ASSERT(lev >= 0 && lev < GetParticles().size());
-
-    const auto domain = Geom(lev).Domain();
-    auto dom_lo = lbound(domain);
 
     const auto dxi = this->ParticleContainerBase::Geom(lev).InvCellSizeArray();
 
@@ -316,6 +273,7 @@ TerrainPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
+                    update_terrain_idata(p,plo,dxi,height_arr);
                 }
                 else
                 {
@@ -324,51 +282,12 @@ TerrainPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+                    update_terrain_idata(p,plo,dxi,height_arr);
+
 #if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
-#endif
-
-#if (AMREX_SPACEDIM == 2)
-                    IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])), p.idata(0) );
-                    iv[0] += dom_lo.x;
-
-                    Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<Real>(iv[0]-dom_lo.x);
-                    auto ylo = height_arr(iv[0]  ,iv[1]  ,0) * (1.0-lx) +
-                               height_arr(iv[0]+1,iv[1]  ,0) *      lx;
-                    auto yhi = height_arr(iv[0]  ,iv[1]+1,0) * (1.0-lx) +
-                               height_arr(iv[0]+1,iv[1]+1,0) *      lx;
-
-                    if (p.pos(1) > yhi) { // need to be careful here
-                        p.idata(0) += 1;
-                    } else if (p.pos(1) <= ylo) {
-                        p.idata(0) -= 1;
-                    }
-
-#elif (AMREX_SPACEDIM == 3)
-                    IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])),
-                                int(amrex::Math::floor((p.pos(1)-plo[1])*dxi[1])),
-                                p.idata(0) );
-                    iv[0] += dom_lo.x;
-                    iv[1] += dom_lo.y;
-
-                    Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<Real>(iv[0]-dom_lo.x);
-                    Real ly = (p.pos(1)-plo[1])*dxi[1] - static_cast<Real>(iv[1]-dom_lo.y);
-                    auto zlo = height_arr(iv[0]  ,iv[1]  ,iv[2]  ) * (1.0-lx) * (1.0-ly) +
-                               height_arr(iv[0]+1,iv[1]  ,iv[2]  ) *      lx  * (1.0-ly) +
-                               height_arr(iv[0]  ,iv[1]+1,iv[2]  ) * (1.0-lx) * ly +
-                               height_arr(iv[0]+1,iv[1]+1,iv[2]  ) *      lx  * ly;
-                    auto zhi = height_arr(iv[0]  ,iv[1]  ,iv[2]+1) * (1.0-lx) * (1.0-ly) +
-                               height_arr(iv[0]+1,iv[1]  ,iv[2]+1) *      lx  * (1.0-ly) +
-                               height_arr(iv[0]  ,iv[1]+1,iv[2]+1) * (1.0-lx) * ly +
-                               height_arr(iv[0]+1,iv[1]+1,iv[2]+1) *      lx  * ly;
-
-                    if (p.pos(2) > zhi) { // need to be careful here
-                        p.idata(0) += 1;
-                    } else if (p.pos(2) <= zlo) {
-                        p.idata(0) -= 1;
-                    }
 #endif
                 }
             });
@@ -388,9 +307,6 @@ TerrainPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_
     AMREX_ASSERT(lev >= 0 && lev < GetParticles().size());
 
     const auto dxi = this->ParticleContainerBase::Geom(0).InvCellSizeArray();
-
-    const auto domain = Geom(lev).Domain();
-    auto dom_lo = lbound(domain);
 
     auto plo = this->ParticleContainerBase::Geom(0).ProbLoArray();
 
@@ -430,6 +346,7 @@ TerrainPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_
                         p.rdata(dim) = p.pos(dim);
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
+                    update_terrain_idata(p,plo,dxi,height_arr);
                 }
                 else
                 {
@@ -438,50 +355,12 @@ TerrainPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
                     }
+                    update_terrain_idata(p,plo,dxi,height_arr);
+
 #if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
-#endif
-
-
-#if (AMREX_SPACEDIM == 2)
-                    IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])), p.idata(0) );
-                    iv[0] += dom_lo.x;
-
-                    Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<Real>(iv[0]-dom_lo.x);
-                    auto ylo = height_arr(iv[0]  ,iv[1]  ,0) * (1.0-lx) +
-                               height_arr(iv[0]+1,iv[1]  ,0) *      lx;
-                    auto yhi = height_arr(iv[0]  ,iv[1]+1,0) * (1.0-lx) +
-                               height_arr(iv[0]+1,iv[1]+1,0) *      lx;
-
-                    if (p.pos(1) > yhi) {
-                        p.idata(0) += 1;
-                    } else if (p.pos(1) <= ylo) {
-                        p.idata(0) -= 1;
-                    }
-
-#elif (AMREX_SPACEDIM == 3)
-                    IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])),
-                                int(amrex::Math::floor((p.pos(1)-plo[1])*dxi[1])),
-                                p.idata(0) );
-
-                    Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<Real>(iv[0]-dom_lo.x);
-                    Real ly = (p.pos(1)-plo[1])*dxi[1] - static_cast<Real>(iv[1]-dom_lo.y);
-                    auto zlo = height_arr(iv[0]  ,iv[1]  ,iv[2]  ) * (1.0-lx) * (1.0-ly) +
-                               height_arr(iv[0]+1,iv[1]  ,iv[2]  ) *      lx  * (1.0-ly) +
-                               height_arr(iv[0]  ,iv[1]+1,iv[2]  ) * (1.0-lx) * ly +
-                               height_arr(iv[0]+1,iv[1]+1,iv[2]  ) *      lx  * ly;
-                    auto zhi = height_arr(iv[0]  ,iv[1]  ,iv[2]+1) * (1.0-lx) * (1.0-ly) +
-                               height_arr(iv[0]+1,iv[1]  ,iv[2]+1) *      lx  * (1.0-ly) +
-                               height_arr(iv[0]  ,iv[1]+1,iv[2]+1) * (1.0-lx) * ly +
-                               height_arr(iv[0]+1,iv[1]+1,iv[2]+1) *      lx  * ly;
-
-                    if (p.pos(2) > zhi) {
-                        p.idata(0) += 1;
-                    } else if (p.pos(2) <= zlo) {
-                        p.idata(0) -= 1;
-                    }
 #endif
                 }
             });

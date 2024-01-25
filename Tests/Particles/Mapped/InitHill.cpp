@@ -95,8 +95,8 @@ InitHill (MultiFab& a_xyz_loc, Geometry& geom)
             if (z_comp > 0) {
                 for (int k = tlo.z; k <= thi.z; k++)
                 {
-                    loc_arr(i,j,0,0) = problo[0] + static_cast<Real>(i)  * dx[0];
-                    loc_arr(i,j,0,1) = problo[1] + static_cast<Real>(j)  * dx[1];
+                    loc_arr(i,j,k,0) = problo[0] + static_cast<Real>(i) * dx[0];
+                    loc_arr(i,j,k,1) = problo[1] + static_cast<Real>(j) * dx[1];
                 }
             }
 
