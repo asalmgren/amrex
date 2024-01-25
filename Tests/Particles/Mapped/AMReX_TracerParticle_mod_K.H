@@ -323,7 +323,6 @@ void linear_interpolate_to_particle_z (const P& p,
         amrex::Real const yint = ly - static_cast<Real>(j0);
         amrex::Real sx[] = { amrex::Real(1.) - xint, xint};
         amrex::Real sy[] = { amrex::Real(1.) - yint, yint};
-        k  = p.idata(0);
 
         amrex::Real hlo[4];
         int ilo = 0;
