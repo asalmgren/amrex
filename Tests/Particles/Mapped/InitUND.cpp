@@ -37,7 +37,7 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, int flow_
             ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 // Physical location of cell center
-                Real x = loc_arr(i,j,k,1);
+                Real x = loc_arr(i,j,k,0);
                 Real y = loc_arr(i,j,k,1);
 
                 Real theta;
