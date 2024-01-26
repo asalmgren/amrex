@@ -47,7 +47,7 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, int flow_
                    theta = atan((y-cy)/(x-cx));
                 }
 
-                Real    rad = sqrt( x*x + y*y);
+                Real    rad = sqrt( (x-cx)*(x-cx) + (y-cy)*(y-cy));
 
                 und_arr(i,j,k,0) =  rad*sin(theta);
                 und_arr(i,j,k,1) = -rad*cos(theta);

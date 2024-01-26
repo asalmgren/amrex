@@ -38,7 +38,8 @@ InitParticles (MultiFab& a_xyz_loc)
 
 #if (AMREX_SPACEDIM == 2)
             int k = 0;
-            if (iv[0] == 0 && iv[1] >= dom_lo.y && iv[1] <= dom_hi.y/2) {
+            // if (iv[0] == 0 && iv[1] >= dom_lo.y && iv[1] <= dom_hi.y/2) { // FOR EVERYTHING BUT ANNULUS
+            if (iv[0] == 0) { // FOR ANNULUS
 #elif (AMREX_SPACEDIM == 3)
             int k = iv[2];
             if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) {
