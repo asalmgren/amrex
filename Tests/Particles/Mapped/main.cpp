@@ -1,11 +1,13 @@
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
+#include "AMReX_PlotFileUtil.H"
 #include <AMReX_Particles.H>
 #include <AMReX_BoxArray.H>
 #include <MappedPC.H>
 #include <RegularPC.H>
 #include <TerrainPC.H>
+#include <AMReX_MultiFabUtil.H>
 
 using namespace amrex;
 
@@ -84,6 +86,7 @@ void InitUCC_map  (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, in
 void InitUCC_reg  (MultiFab& u   ,                            Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type);
 void InitUND_map  (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type);
 void InitUND_reg  (MultiFab& u   ,                            Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type);
+
 
 void get_test_params(TestParams& params)
 {
@@ -404,7 +407,12 @@ void Test()
             mapped_pc.AdvectWithUND(und, 0, dt, a_xyz_loc);
         }
 
-        // plotfilename = Concatenate("plt", nt, 5);
+
+	if (nt%20 ==0){
+        plotfilename = Concatenate("plt", nt, 5);
+        Vector<std::string> varname = {"ux", "uy"};
+        amrex::MultiFab plotmf(ba[0], dm[0], varname.size(), 0 );
+        amrex::average_node_to_cellcenter (plotmf, 0, und, 0, 2, 0);
         // if (params.grid_type == GridType::Terrain) {
         //     terrain_pc.WritePlotFile(plotfilename, "particles");
         // } else if (params.grid_type == GridType::Mapped) {
@@ -412,5 +420,9 @@ void Test()
         // } else if (params.grid_type == GridType::Regular) {
         //     regular_pc.WritePlotFile(plotfilename, "particles");
         // }
+        WriteSingleLevelPlotfile(plotfilename, plotmf, varname, geom[0],0.0,0);
+        //WriteSingleLevelPlotfile("plt_grid",a_xyz_loc,{"gridmap",AMREX_D_DECL("x1","y1","z1")},geom,0.0,0);
+        mapped_pc.WritePlotFile(plotfilename,"particles");
+        }
     } // nt
 }
