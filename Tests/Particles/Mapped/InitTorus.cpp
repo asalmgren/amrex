@@ -42,7 +42,7 @@ InitTorus (amrex::MultiFab& a_xyz_loc, amrex::Geometry& geom)
             Real xi     = (static_cast<int>(i)) * d_xi;
             Real eta    = (static_cast<int>(j)) * d_eta;
             Real zeta   = (static_cast<int>(k)) * d_zeta;
-           
+
             loc_arr(i,j,k,0) = (0.1 * eta + 0.1) * cos(xi);
             loc_arr(i,j,k,0) = (0.1 * eta + 0.1) * sin(xi);
             loc_arr(i,j,k,2) = -0.1 * ( 1 + eta ) + zeta * 0.1 * (2 + 2 * eta);

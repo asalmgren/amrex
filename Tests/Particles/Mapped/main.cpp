@@ -418,7 +418,7 @@ void Test()
         }
 
 
-	if (nt%20 ==0){
+    if (nt%20 ==0){
         plotfilename = Concatenate("plt", nt, 5);
         Vector<std::string> varname = {"ux", "uy"};
         amrex::MultiFab plotmf(ba[0], dm[0], varname.size(), 0 );
