@@ -189,7 +189,6 @@ MappedPC::AdvectWithUCC (MultiFab& vel_cc, int lev, Real dt, const MultiFab& a_x
             });
         } // ParIter
     } // ipass
-
     Redistribute();
 }
 
@@ -243,6 +242,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
                     update_mapped_idata(p,plo,dxi,loc_arr);
+                    amrex::AllPrintToFile("Frompartpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
                 }
                 else
                 {
@@ -250,6 +250,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                     {
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
+                        amrex::Print() << dim << " pos : " << p.pos(dim) << " rdata : " << v[dim] << "\n";
                     }
 #if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) <<
@@ -259,6 +260,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                                       " WITH VEL " << v[0] << std::endl;
 #endif
                     update_mapped_idata(p,plo,dxi,loc_arr);
+                    amrex::AllPrintToFile("partpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
                 }
             });
         } // ParIter

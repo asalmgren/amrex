@@ -1,7 +1,6 @@
-#ifndef MAPPED_PC_H_
-#define MAPPED_PC_H_
 
 #include <AMReX_Particles.H>
+#include <AMReX_TracerParticle_mod_K.H>
 
 struct MappedRealIdx
 {
@@ -99,7 +98,49 @@ public:
             } else { neg++;
             }
         }
+        amrex::Print() << " pos " << pos << " neg " << neg << "\n";
         inside = ( (pos > 0) && (neg > 0) ) ? false : true;
+        return inside;
+    }
+
+    // The xyz are in order (i,j,k) (i+1,j,k) (i,j+1,k) (i+1,j+1,k)
+    // (i,j,k+1) (i+1,j,k+1) (i,j+1,k+1) (i+1,j+1,k+1)
+    bool PointInHexahedron (amrex::Real x[8], amrex::Real y[8], amrex::Real z[8],
+                       amrex::Real xp, amrex::Real yp, amrex::Real zp)
+    {
+        // look up for vertex order to take cross product and determine normal
+        // 6 faces and 4 vertices per face
+        amrex::Array2D<int, 0, 3, 0, 5> inode{4, 2, 6, 0, 7, 1, 5, 3,
+                                              5, 0, 4, 1, 6, 3, 7, 2,
+                                              2, 1, 3, 0, 7, 4, 6, 5};
+        bool inside;
+        // Define ray 1 : particle to lower corner
+        amrex::Real r1x = x[0] - xp;
+        amrex::Real r1y = y[0] - yp;
+        amrex::Real r1z = z[0] - zp;
+        // Define ray 2 : particle to upper corner
+        amrex::Real r2x = x[7] - xp;
+        amrex::Real r2y = y[7] - yp;
+        amrex::Real r2z = z[7] - zp;
+
+        int numfaces = 6;
+        int numinside_counter = 0;
+        for (int i = 0; i < numfaces; ++i) {
+            amrex::Real nx = 0.5 * (y[inode(0,i)] - y[inode(1,i)]) * (z[inode(2,i)] - z[inode(3,i)])
+                                 - (z[inode(0,i)] - z[inode(1,i)]) * (y[inode(2,i)] - y[inode(3,i)]);
+            amrex::Real ny = 0.5 * (z[inode(0,i)] - z[inode(1,i)]) * (x[inode(2,i)] - x[inode(3,i)])
+                                 - (x[inode(0,i)] - x[inode(1,i)]) * (z[inode(2,i)] - z[inode(3,i)]);
+            amrex::Real nz = 0.5 * (x[inode(0,i)] - x[inode(1,i)]) * (y[inode(2,i)] - y[inode(3,i)])
+                                 - (y[inode(0,i)] - y[inode(1,i)]) * (x[inode(2,i)] - x[inode(3,i)]);
+            amrex::Real raydotn = (i%2 == 0) ? r1x * nx + r1y * ny + r1z * nz
+                                             : r2x * nx + r2y * ny + r2z * nz;
+            if (raydotn < 0) {
+                inside = false;
+                return inside;
+            }
+            numinside_counter++;
+        }
+        if (numinside_counter == 6) inside = true;
         return inside;
     }
 
@@ -123,6 +164,7 @@ public:
                 int i = amrex::Math::abs( ii - jj);
                 x[cnt] = loc_arr(iv[0] + i, iv[1] + jj, k, 0);
                 y[cnt] = loc_arr(iv[0] + i, iv[1] + jj, k, 1);
+                cnt++;
             }
         }
         bool inside = PointInPolygon( x, y, p.pos(0), p.pos(1));
@@ -141,6 +183,7 @@ public:
                     int i = amrex::Math::abs(ii - jj);
                     x[cnt] = loc_arr(ivn[0] + i, ivn[1] + jj, k, 0);
                     y[cnt] = loc_arr(ivn[0] + i, ivn[1] + jj, k, 1);
+                    cnt++;
                 }}
                 inside = PointInPolygon( x, y, p.pos(0), p.pos(1));
 
@@ -153,29 +196,73 @@ public:
         }
 
 #elif (AMREX_SPACEDIM == 3)
-        amrex::IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])),
-                           int(amrex::Math::floor((p.pos(1)-plo[1])*dxi[1])),
-                           p.idata(2) );
+        //amrex::IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])),
+        //                   int(amrex::Math::floor((p.pos(1)-plo[1])*dxi[1])),
+        //                   p.idata(2) );
 
-        amrex::Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<amrex::Real>(iv[0]);
-        amrex::Real ly = (p.pos(1)-plo[1])*dxi[1] - static_cast<amrex::Real>(iv[1]);
-        auto zlo = loc_arr(iv[0]  ,iv[1]  ,iv[2]  ,2) * (1.0-lx) * (1.0-ly) +
-                   loc_arr(iv[0]+1,iv[1]  ,iv[2]  ,2) *      lx  * (1.0-ly) +
-                   loc_arr(iv[0]  ,iv[1]+1,iv[2]  ,2) * (1.0-lx) * ly +
-                   loc_arr(iv[0]+1,iv[1]+1,iv[2]  ,2) *      lx  * ly;
-        auto zhi = loc_arr(iv[0]  ,iv[1]  ,iv[2]+1,2) * (1.0-lx) * (1.0-ly) +
-                   loc_arr(iv[0]+1,iv[1]  ,iv[2]+1,2) *      lx  * (1.0-ly) +
-                   loc_arr(iv[0]  ,iv[1]+1,iv[2]+1,2) * (1.0-lx) * ly +
-                   loc_arr(iv[0]+1,iv[1]+1,iv[2]+1,2) *      lx  * ly;
+        //amrex::Real lx = (p.pos(0)-plo[0])*dxi[0] - static_cast<amrex::Real>(iv[0]);
+        //amrex::Real ly = (p.pos(1)-plo[1])*dxi[1] - static_cast<amrex::Real>(iv[1]);
+        //auto zlo = loc_arr(iv[0]  ,iv[1]  ,iv[2]  ,2) * (1.0-lx) * (1.0-ly) +
+        //           loc_arr(iv[0]+1,iv[1]  ,iv[2]  ,2) *      lx  * (1.0-ly) +
+        //           loc_arr(iv[0]  ,iv[1]+1,iv[2]  ,2) * (1.0-lx) * ly +
+        //           loc_arr(iv[0]+1,iv[1]+1,iv[2]  ,2) *      lx  * ly;
+        //auto zhi = loc_arr(iv[0]  ,iv[1]  ,iv[2]+1,2) * (1.0-lx) * (1.0-ly) +
+        //           loc_arr(iv[0]+1,iv[1]  ,iv[2]+1,2) *      lx  * (1.0-ly) +
+        //           loc_arr(iv[0]  ,iv[1]+1,iv[2]+1,2) * (1.0-lx) * ly +
+        //           loc_arr(iv[0]+1,iv[1]+1,iv[2]+1,2) *      lx  * ly;
 
-        if (p.pos(2) > zhi) {
-            p.idata(2) += 1;
-        } else if (p.pos(2) <= zlo) {
-            p.idata(2) -= 1;
+        //if (p.pos(2) > zhi) {
+        //    p.idata(2) += 1;
+        //} else if (p.pos(2) <= zlo) {
+        //    p.idata(2) -= 1;
+        //}
+
+        amrex::IntVect iv( p.idata(0), p.idata(1), p.idata(2) );
+        amrex::Real x[8] = {0, 1, 0, 1, 0, 1, 0, 1};
+        amrex::Real y[8] = {0, 0, 1, 1, 0, 0, 1, 1};
+        amrex::Real z[8] = {0, 0, 0, 0, 1, 1, 1, 1};
+
+        int cnt = 0;
+        for (int k = 0; k < 2; ++k) {
+        for (int j = 0; j < 2; ++j) {
+        for (int i = 0; i < 2; ++i) {
+            x[cnt] = loc_arr(iv[0] + i, iv[1] + j, iv[2] + k, 0);
+            y[cnt] = loc_arr(iv[0] + i, iv[1] + j, iv[2] + k, 1);
+            z[cnt] = loc_arr(iv[0] + i, iv[1] + j, iv[2] + k, 2);
+            cnt++;
+        }}}
+
+        bool inside = PointInHexahedron (x, y, z, p.pos(0), p.pos(1), p.pos(2));
+        if (inside) {
+            return;
+        } else {
+            // looping over neighboring cells
+            for (int lo_k = -1; lo_k <=1; ++lo_k){
+            for (int lo_j = -1; lo_j <=1; ++lo_j){
+            for (int lo_i = -1; lo_i <=1; ++lo_i){
+                if ( (lo_i == 0) && (lo_j == 0) && lo_k == 0 ) continue;
+                amrex::IntVect ivn(p.idata(0) + lo_i, p.idata(1) + lo_j, p.idata(2) + lo_k);
+                cnt = 0;
+                for (int k = 0; k < 2; ++k) {
+                for (int j = 0; j < 2; ++j) {
+                for (int i = 0; i < 2; ++i) {
+                    x[cnt] = loc_arr(ivn[0] + i, ivn[1] + j, ivn[2] + k, 0);
+                    y[cnt] = loc_arr(ivn[0] + i, ivn[1] + j, ivn[2] + k, 1);
+                    z[cnt] = loc_arr(ivn[0] + i, ivn[1] + j, ivn[2] + k, 2);
+                    cnt++;
+                }}}
+                inside = PointInHexahedron (x, y, z, p.pos(0), p.pos(1), p.pos(2));
+                if (inside) {
+                    p.idata(0) = p.idata(0) + lo_i;
+                    p.idata(1) = p.idata(1) + lo_j;
+                    p.idata(2) = p.idata(2) + lo_k;
+                    return;
+                }
+            }}}
         }
+        if (!inside) amrex::Abort("particle has not been mapped!\n");
 #endif
     }
 
 };
 
-#endif
