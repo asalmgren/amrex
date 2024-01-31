@@ -59,7 +59,7 @@ InitUnstretched (MultiFab& a_xyz_loc, Geometry& geom)
 #elif (AMREX_SPACEDIM == 3)
         ParallelFor(makeSlab(gtbx,2,0), [=] AMREX_GPU_DEVICE (int i, int j, int ) noexcept
         {
-            for (int k = tlo.z; k <= thi.z; k++)
+            for (int k = tlo.z-1; k <= thi.z+1; k++)
             {
                 loc_arr(i,j,k,z_comp) = problo[2] + static_cast<Real>(k)  * dx[2];
             }
@@ -68,7 +68,7 @@ InitUnstretched (MultiFab& a_xyz_loc, Geometry& geom)
 
             // Generalized mapped coordinates -- this is x
             if (z_comp > 0) {
-                for (int k = tlo.z; k <= thi.z; k++)
+                for (int k = tlo.z-1; k <= thi.z+1; k++)
                 {
                     loc_arr(i,j,k,0) = problo[0] + static_cast<Real>(i)  * dx[0];
                     loc_arr(i,j,k,1) = problo[1] + static_cast<Real>(j)  * dx[1];

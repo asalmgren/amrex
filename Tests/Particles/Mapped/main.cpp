@@ -1,11 +1,13 @@
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFab.H>
+#include "AMReX_PlotFileUtil.H"
 #include <AMReX_Particles.H>
 #include <AMReX_BoxArray.H>
 #include <MappedPC.H>
 #include <RegularPC.H>
 #include <TerrainPC.H>
+#include <AMReX_MultiFabUtil.H>
 
 using namespace amrex;
 
@@ -14,7 +16,7 @@ enum struct GridType {
 };
 
 enum struct ProbType {
-    Annulus, Stretched, Unstretched, Hill
+    Torus, Annulus, Stretched, Unstretched, Hill
 };
 
 enum struct VelType {
@@ -73,6 +75,7 @@ struct TestParams
 
 void Test ();
 
+void InitTorus       (MultiFab& a_xyz_loc, Geometry& geom);
 void InitAnnulus     (MultiFab& a_xyz_loc, Geometry& geom);
 void InitUnstretched (MultiFab& a_xyz_loc  , Geometry& geom);
 void InitStretched   (MultiFab& a_xyz_loc  , Geometry& geom);
@@ -84,6 +87,7 @@ void InitUCC_map  (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, in
 void InitUCC_reg  (MultiFab& u   ,                            Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type);
 void InitUND_map  (MultiFab& u   , const MultiFab& a_xyz_loc, Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type);
 void InitUND_reg  (MultiFab& u   ,                            Geometry& geom, int flow_dir, Real vert_vel, ProbType prob_type);
+
 
 void get_test_params(TestParams& params)
 {
@@ -119,10 +123,12 @@ void get_test_params(TestParams& params)
 
     std::string prob_type_string;
     pp.get("prob_type", prob_type_string);
-    AMREX_ALWAYS_ASSERT(prob_type_string == "annulus" ||
-                        prob_type_string == "stretched" ||
+    AMREX_ALWAYS_ASSERT(prob_type_string == "donut"       ||
+                        prob_type_string == "annulus"     ||
+                        prob_type_string == "stretched"   ||
                         prob_type_string == "unstretched" ||
                         prob_type_string == "hill");
+    if (prob_type_string == "donut"      ) params.prob_type = ProbType::Torus;
     if (prob_type_string == "annulus"    ) params.prob_type = ProbType::Annulus;
     if (prob_type_string == "unstretched") params.prob_type = ProbType::Unstretched;
     if (prob_type_string == "stretched"  ) params.prob_type = ProbType::Stretched;
@@ -217,7 +223,11 @@ void Test()
     MultiFab a_xyz_loc(ba_nd,dm[lev],AMREX_SPACEDIM,1);
 
     // Annulus
-    if (params.prob_type == ProbType::Annulus) {
+    if (params.prob_type == ProbType::Torus) {
+        AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Mapped);
+        AMREX_ALWAYS_ASSERT(AMREX_SPACEDIM==3);
+        InitTorus(a_xyz_loc, geom[lev]);
+    } else if (params.prob_type == ProbType::Annulus) {
         AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Mapped);
         InitAnnulus(a_xyz_loc, geom[lev]);
 
@@ -268,7 +278,7 @@ void Test()
 #endif
 
     // Hard-wire the vertical velocity
-    Real vert_vel = 0.5;
+    Real vert_vel = 0.0;
 
     if (params.vel_type == VelType::mac)
     {
@@ -368,6 +378,9 @@ void Test()
     amrex::Real dt = 0.9 * dx[0] / max_vel;
     amrex::Print() << "COMPUTING DT TO BE " << dt << " BASED ON MAX VEL " << max_vel << std::endl;
 #else
+    auto dx = geom[0].CellSize();
+    amrex::Print() << dx[0] << " " << dx[1] << " " << dx[2] << "\n";
+    amrex::Print() << und.max(0,0,false) << "\n";
     amrex::Real dt = 0.01;
     amrex::Print() << "SETTING DT TO BE " << dt << std::endl;
 #endif
@@ -404,7 +417,12 @@ void Test()
             mapped_pc.AdvectWithUND(und, 0, dt, a_xyz_loc);
         }
 
-        // plotfilename = Concatenate("plt", nt, 5);
+
+	if (nt%20 ==0){
+        plotfilename = Concatenate("plt", nt, 5);
+        Vector<std::string> varname = {"ux", "uy"};
+        amrex::MultiFab plotmf(ba[0], dm[0], varname.size(), 0 );
+        amrex::average_node_to_cellcenter (plotmf, 0, und, 0, 2, 0);
         // if (params.grid_type == GridType::Terrain) {
         //     terrain_pc.WritePlotFile(plotfilename, "particles");
         // } else if (params.grid_type == GridType::Mapped) {
@@ -412,5 +430,16 @@ void Test()
         // } else if (params.grid_type == GridType::Regular) {
         //     regular_pc.WritePlotFile(plotfilename, "particles");
         // }
+        WriteSingleLevelPlotfile(plotfilename, plotmf, varname, geom[0],0.0,0);
+        //WriteSingleLevelPlotfile("plt_grid",a_xyz_loc,{"gridmap",AMREX_D_DECL("x1","y1","z1")},geom,0.0,0);
+        mapped_pc.WritePlotFile(plotfilename,"particles");
+        }
     } // nt
+//    plotfilename = Concatenate("plt", nt, 5);
+//    Vector<std::string> varname = {"dummy"};
+//    amrex::MultiFab plotmf(ba[0], dm[0], varname.size(), 0 );
+//    plotmf.setval(0.0);
+//    WriteSingleLevelPlotfileWithTerrain(plotfilename, plotmf, varname, geom[0],0.0,0);
+//    //WriteSingleLevelPlotfile("plt_grid",a_xyz_loc,{"gridmap",AMREX_D_DECL("x1","y1","z1")},geom,0.0,0);
+//    mapped_pc.WritePlotFile(plotfilename,"particles");
 }
