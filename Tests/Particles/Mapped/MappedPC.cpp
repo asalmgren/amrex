@@ -42,23 +42,27 @@ InitParticles (MultiFab& a_xyz_loc)
             if (iv[0] == 0) { // FOR ANNULUS
 #elif (AMREX_SPACEDIM == 3)
             int k = iv[2];
-            if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) {
+            //if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) { // FOR EVERYTHING BUT TORUS
+            if (  ( (iv[0] > 1) && (iv[0] < 30) ) && (iv[1] == 0 ) && (iv[2]>1 && iv[2] < 10 )) {  // FOR TORUS
 #endif
                 int i = iv[0];
                 int j = iv[1];
 
                 // This is the physical location of the center of the cell
-                Real x = 0.25*( loc_arr(i  ,j,k,0) + loc_arr(i  ,j+1,k,0)
-                               +loc_arr(i+1,j,k,0) + loc_arr(i+1,j+1,k,0));
-                Real y = 0.25*( loc_arr(i  ,j,k,1) + loc_arr(i  ,j+1,k,1)
-                               +loc_arr(i+1,j,k,1) + loc_arr(i+1,j+1,k,1));
+                Real x = 0.125*(  loc_arr(i  ,j  ,k  ,0) + loc_arr(i+1,j  ,k  , 0)
+                                + loc_arr(i  ,j+1,k  ,0) + loc_arr(i+1,j+1,k  , 0)
+                                + loc_arr(i  ,j  ,k+1,0) + loc_arr(i+1,j  ,k+1, 0)
+                                + loc_arr(i  ,j+1,k+1,0) + loc_arr(i+1,j+1,k+1, 0));
+                Real y = 0.125*(  loc_arr(i  ,j  ,k  ,1) + loc_arr(i+1,j  ,k  , 1)
+                                + loc_arr(i  ,j+1,k  ,1) + loc_arr(i+1,j+1,k  , 1)
+                                + loc_arr(i  ,j  ,k+1,1) + loc_arr(i+1,j  ,k+1, 1)
+                                + loc_arr(i  ,j+1,k+1,1) + loc_arr(i+1,j+1,k+1, 1));
 
                 ParticleType p;
                 p.id()  = ParticleType::NextID();
                 p.cpu() = ParallelDescriptor::MyProc();
                 p.pos(0) = x;
                 p.pos(1) = y;
-
                 p.rdata(MappedRealIdx::vx) =Real(0.0);
                 p.rdata(MappedRealIdx::vy) = Real(0.0);
 
@@ -68,15 +72,25 @@ InitParticles (MultiFab& a_xyz_loc)
 #if (AMREX_SPACEDIM == 2)
                 amrex::Print() << "Particle at (x,y) OF " << iv << " " << x << " " << y << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-                Real z = Real(0.125)*(loc_arr(i  ,j,k  ,2) + loc_arr(i  ,j+1,k  ,2) +
-                                      loc_arr(i+1,j,k  ,2) + loc_arr(i+1,j+1,k  ,2) +
-                                      loc_arr(i  ,j,k+1,2) + loc_arr(i  ,j+1,k+1,2) +
-                                      loc_arr(i+1,j,k+1,2) + loc_arr(i+1,j+1,k+1,2));
+                Real z = 0.125*(  loc_arr(i  ,j  ,k  ,2) + loc_arr(i+1,j  ,k  , 2)
+                                + loc_arr(i  ,j+1,k  ,2) + loc_arr(i+1,j+1,k  , 2)
+                                + loc_arr(i  ,j  ,k+1,2) + loc_arr(i+1,j  ,k+1, 2)
+                                + loc_arr(i  ,j+1,k+1,2) + loc_arr(i+1,j+1,k+1, 2));
                 p.pos(2) = z;
                 p.rdata(MappedRealIdx::vz) = Real(0.);
                 p.idata(MappedIntIdx::k) = iv[2];  // particles carry their k-index
 
                 amrex::Print() << "Particle at (x,y,z) OF " << iv << " " << x << " " << y << " " << z << std::endl;
+
+//                amrex::Print() << " i, j, k " << loc_arr(i  ,j  ,k  ,0) << " " << loc_arr(i  ,j  ,k  ,1) << " " << loc_arr(i  ,j  ,k  ,2) << "\n";
+//                amrex::Print() << " i+1, j, k " << loc_arr(i+1  ,j  ,k  ,0) << " " << loc_arr(i+1  ,j  ,k  ,1) << " " << loc_arr(i+1  ,j  ,k  ,2) << "\n";
+//                amrex::Print() << " i+1, j+1, k " << loc_arr(i+1  ,j+1  ,k  ,0) << " " << loc_arr(i+1  ,j+1  ,k  ,1) << " " << loc_arr(i+1  ,j+1  ,k  ,2) << "\n";
+//                amrex::Print() << " i, j+1, k " << loc_arr(i  ,j+1  ,k  ,0) << " " << loc_arr(i  ,j+1  ,k  ,1) << " " << loc_arr(i  ,j+1  ,k  ,2) << "\n";
+//                amrex::Print() << " i, j, k+1 " << loc_arr(i  ,j  ,k+1  ,0) << " " << loc_arr(i  ,j  ,k+1  ,1) << " " << loc_arr(i  ,j  ,k+1  ,2) << "\n";
+//                amrex::Print() << " i+1, j, k+1 " << loc_arr(i+1  ,j  ,k+1  ,0) << " " << loc_arr(i+1  ,j  ,k+1  ,1) << " " << loc_arr(i+1  ,j  ,k+1  ,2) << "\n";
+//                amrex::Print() << " i+1, j+1, k+1 " << loc_arr(i+1  ,j+1  ,k+1  ,0) << " " << loc_arr(i+1  ,j+1  ,k+1  ,1) << " " << loc_arr(i+1  ,j+1  ,k+1  ,2) << "\n";
+//                amrex::Print() << " i, j+1, k+1 " << loc_arr(i  ,j+1  ,k+1  ,0) << " " << loc_arr(i  ,j+1  ,k+1  ,1) << " " << loc_arr(i  ,j+1  ,k+1  ,2) << "\n";
+//                amrex::AllPrintToFile("Initpartpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
 #endif
 
                 host_particles.push_back(p);
@@ -234,7 +248,9 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
 #if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << std::endl;
+                    amrex::Real rc = sqrt((p.pos(0)-0.5)*(p.pos(0)-0.5) + (p.pos(1)-0.5)*(p.pos(1)-0.5));
+                    amrex::Real theta = std::atan2( (p.pos(2) - 0.5) , (p.pos(1) - 0.5));
+                    amrex::Print() << "FROM " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << " " << rc << " theta : " << theta << std::endl;
 #endif
                     for (int dim=0; dim < AMREX_SPACEDIM; dim++)
                     {
@@ -242,7 +258,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                         p.pos(dim) += static_cast<ParticleReal>(ParticleReal(0.5)*dt*v[dim]);
                     }
                     update_mapped_idata(p,plo,dxi,loc_arr);
-                    amrex::AllPrintToFile("Frompartpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
+//                    amrex::AllPrintToFile("Frompartpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
                 }
                 else
                 {
@@ -250,17 +266,18 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                     {
                         p.pos(dim) = p.rdata(dim) + static_cast<ParticleReal>(dt*v[dim]);
                         p.rdata(dim) = v[dim];
-                        amrex::Print() << dim << " pos : " << p.pos(dim) << " rdata : " << v[dim] << "\n";
                     }
 #if (AMREX_SPACEDIM == 2)
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(AMREX_SPACEDIM-1) <<
                                       " WITH VEL " << v[0] << std::endl;
 #elif (AMREX_SPACEDIM == 3)
-                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) <<
-                                      " WITH VEL " << v[0] << std::endl;
+                    amrex::Real rc = sqrt((p.pos(0)-0.5)*(p.pos(0)-0.5) + (p.pos(1)-0.5)*(p.pos(1)-0.5));
+                    amrex::Real theta = std::atan2( (p.pos(2) - 0.5) , (p.pos(1) - 0.5));
+                    amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << " " << rc << " " << theta <<
+                                      " WITH VEL " << v[0] << " " << v[1] << " " << v[2] << std::endl; 
 #endif
                     update_mapped_idata(p,plo,dxi,loc_arr);
-                    amrex::AllPrintToFile("partpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
+//                    amrex::AllPrintToFile("partpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
                 }
             });
         } // ParIter

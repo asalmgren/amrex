@@ -98,7 +98,6 @@ public:
             } else { neg++;
             }
         }
-        amrex::Print() << " pos " << pos << " neg " << neg << "\n";
         inside = ( (pos > 0) && (neg > 0) ) ? false : true;
         return inside;
     }
@@ -113,7 +112,7 @@ public:
         amrex::Array2D<int, 0, 3, 0, 5> inode{4, 2, 6, 0, 7, 1, 5, 3,
                                               5, 0, 4, 1, 6, 3, 7, 2,
                                               2, 1, 3, 0, 7, 4, 6, 5};
-        bool inside;
+        bool inside = false;
         // Define ray 1 : particle to lower corner
         amrex::Real r1x = x[0] - xp;
         amrex::Real r1y = y[0] - yp;
@@ -126,15 +125,16 @@ public:
         int numfaces = 6;
         int numinside_counter = 0;
         for (int i = 0; i < numfaces; ++i) {
-            amrex::Real nx = 0.5 * (y[inode(0,i)] - y[inode(1,i)]) * (z[inode(2,i)] - z[inode(3,i)])
-                                 - (z[inode(0,i)] - z[inode(1,i)]) * (y[inode(2,i)] - y[inode(3,i)]);
-            amrex::Real ny = 0.5 * (z[inode(0,i)] - z[inode(1,i)]) * (x[inode(2,i)] - x[inode(3,i)])
-                                 - (x[inode(0,i)] - x[inode(1,i)]) * (z[inode(2,i)] - z[inode(3,i)]);
-            amrex::Real nz = 0.5 * (x[inode(0,i)] - x[inode(1,i)]) * (y[inode(2,i)] - y[inode(3,i)])
-                                 - (y[inode(0,i)] - y[inode(1,i)]) * (x[inode(2,i)] - x[inode(3,i)]);
-            amrex::Real raydotn = (i%2 == 0) ? r1x * nx + r1y * ny + r1z * nz
-                                             : r2x * nx + r2y * ny + r2z * nz;
+            amrex::Real nx = 0.5 * ( ( (y[inode(0,i)] - y[inode(1,i)]) * (z[inode(2,i)] - z[inode(3,i)]) )
+                                 -   ( (z[inode(0,i)] - z[inode(1,i)]) * (y[inode(2,i)] - y[inode(3,i)]) ) );
+            amrex::Real ny = 0.5 * ( ( (z[inode(0,i)] - z[inode(1,i)]) * (x[inode(2,i)] - x[inode(3,i)]) )
+                                 -   ( (x[inode(0,i)] - x[inode(1,i)]) * (z[inode(2,i)] - z[inode(3,i)]) ) );
+            amrex::Real nz = 0.5 * ( ( (x[inode(0,i)] - x[inode(1,i)]) * (y[inode(2,i)] - y[inode(3,i)]) )
+                                 -   ( (y[inode(0,i)] - y[inode(1,i)]) * (x[inode(2,i)] - x[inode(3,i)]) ) );
+            amrex::Real raydotn = (i%2 == 0) ? (r1x * nx + r1y * ny + r1z * nz)
+                                             : (r2x * nx + r2y * ny + r2z * nz);
             if (raydotn < 0) {
+                amrex::Print() << " iface : " << i << " outside \n";
                 inside = false;
                 return inside;
             }
@@ -195,6 +195,7 @@ public:
             }}
         }
 
+        if (!inside) amrex::Abort("particle has not been mapped in 2D!\n");
 #elif (AMREX_SPACEDIM == 3)
         //amrex::IntVect iv( int(amrex::Math::floor((p.pos(0)-plo[0])*dxi[0])),
         //                   int(amrex::Math::floor((p.pos(1)-plo[1])*dxi[1])),
@@ -218,9 +219,9 @@ public:
         //}
 
         amrex::IntVect iv( p.idata(0), p.idata(1), p.idata(2) );
-        amrex::Real x[8] = {0, 1, 0, 1, 0, 1, 0, 1};
-        amrex::Real y[8] = {0, 0, 1, 1, 0, 0, 1, 1};
-        amrex::Real z[8] = {0, 0, 0, 0, 1, 1, 1, 1};
+        amrex::Real x[8];
+        amrex::Real y[8];
+        amrex::Real z[8];
 
         int cnt = 0;
         for (int k = 0; k < 2; ++k) {
@@ -256,11 +257,52 @@ public:
                     p.idata(0) = p.idata(0) + lo_i;
                     p.idata(1) = p.idata(1) + lo_j;
                     p.idata(2) = p.idata(2) + lo_k;
+                    if (p.idata(0) == -1) p.idata(0) = 31;
+                    if (p.idata(1) == -1) p.idata(1) = 31;
+                    if (p.idata(0) == 32) p.idata(0) = 0;
+                    if (p.idata(1) == 32) p.idata(1) = 0;
                     return;
                 }
             }}}
         }
-        if (!inside) amrex::Abort("particle has not been mapped!\n");
+        if (!inside) { 
+        //    // looping over neighboring cells
+        //    for (int lo_k = -2; lo_k <=2; ++lo_k){
+        //    for (int lo_j = -2; lo_j <=2; ++lo_j){
+        //    for (int lo_i = -2; lo_i <=2; ++lo_i){
+        //        if ( (lo_i == 0) && (lo_j == 0) && lo_k == 0 ) continue;
+        //        amrex::IntVect ivn(p.idata(0) + lo_i, p.idata(1) + lo_j, p.idata(2) + lo_k);
+        //        cnt = 0;
+        //        for (int k = 0; k < 2; ++k) {
+        //        for (int j = 0; j < 2; ++j) {
+        //        for (int i = 0; i < 2; ++i) {
+        //            x[cnt] = loc_arr(ivn[0] + i, ivn[1] + j, ivn[2] + k, 0);
+        //            y[cnt] = loc_arr(ivn[0] + i, ivn[1] + j, ivn[2] + k, 1);
+        //            z[cnt] = loc_arr(ivn[0] + i, ivn[1] + j, ivn[2] + k, 2);
+        //            cnt++;
+        //        }}}
+        //        amrex::Print() << " ngbr cnt : " << lo_i << " " << lo_j << " " << lo_k  << " " << ivn<< " " << "\n";
+        //        for (int ii = 0; ii < 8; ++ii ) {amrex::Print() << " " << x[ii] << ", ";}
+        //        amrex::Print() << "\n";
+        //        for (int ii = 0; ii < 8; ++ii ) {amrex::Print() << " " << y[ii] << ", ";}
+        //        amrex::Print() << "\n";
+        //        for (int ii = 0; ii < 8; ++ii ) {amrex::Print() << " " << z[ii] << ", ";}
+        //        amrex::Print() << "\n";
+        //        inside = PointInHexahedron (x, y, z, p.pos(0), p.pos(1), p.pos(2));
+        //        if (inside) {
+        //            p.idata(0) = p.idata(0) + lo_i;
+        //            p.idata(1) = p.idata(1) + lo_j;
+        //            p.idata(2) = p.idata(2) + lo_k;
+        //            if (p.idata(0) == -1) p.idata(0) = 31;
+        //            if (p.idata(1) == -1) p.idata(1) = 31;
+        //            if (p.idata(0) == 32) p.idata(0) = 0;
+        //            if (p.idata(1) == 32) p.idata(1) = 0;
+        //            return;
+        //        }
+        //    }}}
+        //    amrex::Print() << " pos : " << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)  << " iv " << iv << "\n";
+            if (!inside) amrex::Abort("particle has not been mapped!\n");
+        }
 #endif
     }
 
