@@ -1,8 +1,8 @@
-size = (32, 32, 32)
+size = (32,32,64 )
 max_grid_size = 128
-is_periodic = (1,0)
+is_periodic = (1,1,1)
 num_ppc = 1
-nsteps = 1
+nsteps = 750
 nlevs = 1
 
 grid_type = mapped

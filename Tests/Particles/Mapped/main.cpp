@@ -123,12 +123,12 @@ void get_test_params(TestParams& params)
 
     std::string prob_type_string;
     pp.get("prob_type", prob_type_string);
-    AMREX_ALWAYS_ASSERT(prob_type_string == "donut"       ||
+    AMREX_ALWAYS_ASSERT(prob_type_string == "torus"       ||
                         prob_type_string == "annulus"     ||
                         prob_type_string == "stretched"   ||
                         prob_type_string == "unstretched" ||
                         prob_type_string == "hill");
-    if (prob_type_string == "donut"      ) params.prob_type = ProbType::Torus;
+    if (prob_type_string == "torus"      ) params.prob_type = ProbType::Torus;
     if (prob_type_string == "annulus"    ) params.prob_type = ProbType::Annulus;
     if (prob_type_string == "unstretched") params.prob_type = ProbType::Unstretched;
     if (prob_type_string == "stretched"  ) params.prob_type = ProbType::Stretched;
@@ -178,7 +178,7 @@ void Test()
 
 #if (AMREX_SPACEDIM == 3)
     real_box.setLo(2, 0.0);
-    real_box.setHi(2, 1.0);
+    real_box.setHi(2, 5.0);
 #endif
 
     IntVect domain_lo(AMREX_D_DECL(0, 0, 0));
@@ -220,7 +220,7 @@ void Test()
     MultiFab   a_z_loc(ba_nd,dm[lev],1,1);
 
     // This has AMREX_SPACEDIM components to define (x,y,z) as a function of (i,j,k)
-    MultiFab a_xyz_loc(ba_nd,dm[lev],AMREX_SPACEDIM,1);
+    MultiFab a_xyz_loc(ba_nd,dm[lev],AMREX_SPACEDIM,2);
 
     // Annulus
     if (params.prob_type == ProbType::Torus) {
@@ -278,7 +278,7 @@ void Test()
 #endif
 
     // Hard-wire the vertical velocity
-    Real vert_vel = 0.0;
+    Real vert_vel = 0.1;
 
     if (params.vel_type == VelType::mac)
     {
@@ -379,8 +379,6 @@ void Test()
     amrex::Print() << "COMPUTING DT TO BE " << dt << " BASED ON MAX VEL " << max_vel << std::endl;
 #else
     auto dx = geom[0].CellSize();
-    amrex::Print() << dx[0] << " " << dx[1] << " " << dx[2] << "\n";
-    amrex::Print() << und.max(0,0,false) << "\n";
     amrex::Real dt = 0.01;
     amrex::Print() << "SETTING DT TO BE " << dt << std::endl;
 #endif

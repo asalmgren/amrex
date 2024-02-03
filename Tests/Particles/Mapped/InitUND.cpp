@@ -4,7 +4,7 @@
 using namespace amrex;
 
 enum struct ProbType {
-    Annulus, Stretched, Hill
+    Torus, Annulus, Stretched, Hill
 };
 
 void
@@ -22,7 +22,46 @@ InitUND_map (MultiFab& und, const MultiFab& a_xyz_loc, Geometry& geom, int flow_
     //
     // ANNULUS
     //
-    if (prob_type == ProbType::Annulus) {
+    if (prob_type == ProbType::Torus) {
+        // We only do this problem with fully mapped coordinates
+        AMREX_ALWAYS_ASSERT(a_xyz_loc.nComp() == AMREX_SPACEDIM);
+        for (MFIter mfi(und); mfi.isValid(); ++mfi)
+        {
+            const Box& tile_box = mfi.growntilebox();
+            auto loc_arr = a_xyz_loc.const_array(mfi);
+            auto und_arr = und.array(mfi);
+
+            ParallelFor( tile_box, [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                // Physical location of cell center
+                Real x = loc_arr(i,j,k,0);
+                Real y = loc_arr(i,j,k,1);
+                Real theta;
+                //if (x == cx) {
+                //   theta = 3.14/2.;
+                //} else {
+                //   theta = atan((y-cy)/(x-cx));
+                //}
+                //Real    rad = sqrt( (x-cx)*( x-cx) + (y-cy)*(y-cy));
+
+                und_arr(i,j,k,0) = y - cy; // rad*sin(theta);
+                und_arr(i,j,k,1) = cx - x; // -1.*rad*cos(theta);
+
+#if (AMREX_SPACEDIM == 3)
+                // Real z = loc_arr(i,j,k,2);
+                und_arr(i,j,k,2) =  0.02;
+#endif
+                if (i == 20 && j==5 && k==5) amrex::Print() << "UND AT " <<  IntVect(AMREX_D_DECL(i,j,k)) << " "
+                                                        << RealVect(AMREX_D_DECL(und_arr(i,j,k,0),und_arr(i,j,k,1),und_arr(i,j,k,2)))
+                                                        << std::endl;
+                if (i == 20 && j==23 && k==5) amrex::Print() << "UND AT " <<  IntVect(AMREX_D_DECL(i,j,k)) << " "
+                                                        << RealVect(AMREX_D_DECL(und_arr(i,j,k,0),und_arr(i,j,k,1),und_arr(i,j,k,2)))
+                                                        << std::endl;
+
+
+            });
+        }
+    } else if (prob_type == ProbType::Annulus) {
 
         // We only do this problem with fully mapped coordinates
         AMREX_ALWAYS_ASSERT(a_xyz_loc.nComp() == AMREX_SPACEDIM);
