@@ -554,9 +554,9 @@ void linear_interpolate_to_particle_mapped (const P& p,
         x_vals(2) = loc_arr(i  ,j+1,k  ,0) - x1;
         x_vals(3) = loc_arr(i+1,j+1,k  ,0) - x1;
         x_vals(4) = loc_arr(i  ,j  ,k+1,0) - x1;
-        x_vals(4) = loc_arr(i+1,j  ,k+1,0) - x1;
-        x_vals(5) = loc_arr(i  ,j+1,k+1,0) - x1;
-        x_vals(6) = loc_arr(i+1,j+1,k+1,0) - x1;
+        x_vals(5) = loc_arr(i+1,j  ,k+1,0) - x1;
+        x_vals(6) = loc_arr(i  ,j+1,k+1,0) - x1;
+        x_vals(7) = loc_arr(i+1,j+1,k+1,0) - x1;
 
         y1        = loc_arr(i  ,j  ,k  ,1);
         y_vals(1) = loc_arr(i+1,j  ,k  ,1) - y1;
@@ -609,7 +609,6 @@ void linear_interpolate_to_particle_mapped (const P& p,
         pz = p.pos(2) - z1;
 
         amrex::Real f = b(1)*px + b(2)*py + b(3)*pz + b(4)*px*py + b(5)*px*pz + b(6)*py*pz + b(7)*px*py*pz;
-
         val[comp-start_comp] = f + f1;
 #endif
 
