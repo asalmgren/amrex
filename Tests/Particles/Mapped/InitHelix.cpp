@@ -41,7 +41,6 @@ InitHelix (amrex::MultiFab& a_xyz_loc, amrex::Geometry& geom)
             Real xi     = (static_cast<int>(i)) * d_xi;
             Real eta    = (static_cast<int>(j)) * d_eta;
             Real zeta   = (static_cast<int>(k)) * d_zeta;
-           
             loc_arr(i,j,k,0) = cx + (0.1 * xi + 0.1) * cos(tpi * eta);
             loc_arr(i,j,k,1) = cy + (0.1 * xi + 0.1) * sin(tpi * eta);
             //loc_arr(i,j,k,2) = cz + ( xi * 0.1 - 0.1 ) + zeta * 0.1 * (2. + 1. * xi); 3D torus

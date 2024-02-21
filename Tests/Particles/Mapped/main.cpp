@@ -291,7 +291,7 @@ WriteGenericPlotfileHeaderWithMapped (std::ostream &HeaderFile,
         amrex::Vector<IntVect> ref_ratio(nlevels);
         for (int i = 0 ; i <nlevels; ++i) {
             ref_ratio[i] = amrex::IntVect::TheUnitVector();
-        } 
+        }
         BL_ASSERT(nlevels <= bArray.size());
         BL_ASSERT(nlevels <= ref_ratio.size()+1);
         BL_ASSERT(nlevels <= level_steps.size());
@@ -682,7 +682,7 @@ void Test()
                                            GetVecOfConstPtrs(mfarr),
                                            GetVecOfConstPtrs(mf_nd),
                                            varname,
-                                           nt, level_steps, versionName, levelPrefix, mfPrefix, extra_dirs, geomarr); 
+                                           nt, level_steps, versionName, levelPrefix, mfPrefix, extra_dirs, geomarr);
         mapped_pc.WritePlotFile(plotfilename,"particles");
 
         //WriteSingleLevelPlotfile("plt_grid",a_xyz_loc,{"gridmap",AMREX_D_DECL("x1","y1","z1")},geom,0.0,0);

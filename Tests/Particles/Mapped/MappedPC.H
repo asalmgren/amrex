@@ -265,7 +265,7 @@ public:
                 }
             }}}
         }
-        if (!inside) { 
+        if (!inside) {
         //    // looping over neighboring cells
         //    for (int lo_k = -2; lo_k <=2; ++lo_k){
         //    for (int lo_j = -2; lo_j <=2; ++lo_j){

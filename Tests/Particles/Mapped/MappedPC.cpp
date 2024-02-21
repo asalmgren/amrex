@@ -274,7 +274,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                     amrex::Real rc = sqrt((p.pos(0)-0.5)*(p.pos(0)-0.5) + (p.pos(1)-0.5)*(p.pos(1)-0.5));
                     amrex::Real theta = std::atan2( (p.pos(2) - 0.5) , (p.pos(1) - 0.5));
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << " " << rc << " " << theta <<
-                                      " WITH VEL " << v[0] << " " << v[1] << " " << v[2] << std::endl; 
+                                      " WITH VEL " << v[0] << " " << v[1] << " " << v[2] << std::endl;
 #endif
                     update_mapped_idata(p,plo,dxi,loc_arr);
 //                    amrex::AllPrintToFile("partpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
