@@ -11,12 +11,37 @@
 
 using namespace amrex;
 
+void
+WriteMultiLevelPlotfileWithMapped (const std::string& plotfilename, int nlevels,
+                                         const Vector<const MultiFab*>& mf,
+                                         const Vector<const MultiFab*>& mf_nd,
+                                         const Vector<std::string>& varnames,
+                                         Real time,
+                                         const Vector<int>& level_steps,
+                                         const std::string &versionName,
+                                         const std::string &levelPrefix,
+                                         const std::string &mfPrefix,
+                                         const Vector<std::string>& extra_dirs,
+                                         const Vector<Geometry> geom);
+
+
+void
+WriteGenericPlotfileHeaderWithMapped (std::ostream &HeaderFile,
+                                            int nlevels,
+                                            const Vector<BoxArray> &bArray,
+                                            const Vector<std::string> &varnames,
+                                            Real time,
+                                            const Vector<int> &level_steps,
+                                            const std::string &versionName,
+                                            const std::string &levelPrefix,
+                                            const std::string &mfPrefix,
+                                            const Vector<Geometry> geom);
 enum struct GridType {
     Regular, Terrain, Mapped
 };
 
 enum struct ProbType {
-    Torus, Annulus, Stretched, Unstretched, Hill
+    Helix, Torus, Annulus, Stretched, Unstretched, Hill
 };
 
 enum struct VelType {
@@ -75,6 +100,7 @@ struct TestParams
 
 void Test ();
 
+void InitHelix       (MultiFab& a_xyz_loc, Geometry& geom);
 void InitTorus       (MultiFab& a_xyz_loc, Geometry& geom);
 void InitAnnulus     (MultiFab& a_xyz_loc, Geometry& geom);
 void InitUnstretched (MultiFab& a_xyz_loc  , Geometry& geom);
@@ -123,11 +149,13 @@ void get_test_params(TestParams& params)
 
     std::string prob_type_string;
     pp.get("prob_type", prob_type_string);
-    AMREX_ALWAYS_ASSERT(prob_type_string == "torus"       ||
+    AMREX_ALWAYS_ASSERT(prob_type_string == "helix"       ||
+                        prob_type_string == "torus"     ||
                         prob_type_string == "annulus"     ||
                         prob_type_string == "stretched"   ||
                         prob_type_string == "unstretched" ||
                         prob_type_string == "hill");
+    if (prob_type_string == "helix"      ) params.prob_type = ProbType::Helix;
     if (prob_type_string == "torus"      ) params.prob_type = ProbType::Torus;
     if (prob_type_string == "annulus"    ) params.prob_type = ProbType::Annulus;
     if (prob_type_string == "unstretched") params.prob_type = ProbType::Unstretched;
@@ -158,6 +186,189 @@ int main (int argc, char* argv[])
 
     amrex::Finalize();
 }
+
+void
+WriteMultiLevelPlotfileWithMapped (const std::string& plotfilename, int nlevels,
+                                         const Vector<const MultiFab*>& mf,
+                                         const Vector<const MultiFab*>& mf_nd,
+                                         const Vector<std::string>& varnames,
+                                         Real time,
+                                         const Vector<int>& level_steps,
+                                         const std::string &versionName,
+                                         const std::string &levelPrefix,
+                                         const std::string &mfPrefix,
+                                         const Vector<std::string>& extra_dirs,
+                                         const Vector<Geometry> geom)
+{
+    BL_PROFILE("WriteMultiLevelPlotfileWithTerrain()");
+    amrex::Vector<IntVect> ref_ratio(nlevels);
+    for (int i = 0 ; i <nlevels; ++i) {
+        ref_ratio[i] = amrex::IntVect::TheUnitVector();
+    }
+    BL_ASSERT(nlevels <= mf.size());
+    BL_ASSERT(nlevels <= ref_ratio.size()+1);
+    BL_ASSERT(nlevels <= level_steps.size());
+    BL_ASSERT(mf[0]->nComp() == varnames.size());
+    int finest_level = 0;
+    bool callBarrier(false);
+    PreBuildDirectorHierarchy(plotfilename, levelPrefix, nlevels, callBarrier);
+    if (!extra_dirs.empty()) {
+        for (const auto& d : extra_dirs) {
+            const std::string ed = plotfilename+"/"+d;
+            PreBuildDirectorHierarchy(ed, levelPrefix, nlevels, callBarrier);
+        }
+    }
+    ParallelDescriptor::Barrier();
+
+    if (ParallelDescriptor::MyProc() == ParallelDescriptor::NProcs()-1) {
+        Vector<BoxArray> boxArrays(nlevels);
+        for(int level(0); level < boxArrays.size(); ++level) {
+            boxArrays[level] = mf[level]->boxArray();
+        }
+
+        auto f = [=]() {
+            VisMF::IO_Buffer io_buffer(VisMF::IO_Buffer_Size);
+            std::string HeaderFileName(plotfilename + "/Header");
+            std::ofstream HeaderFile;
+            HeaderFile.rdbuf()->pubsetbuf(io_buffer.dataPtr(), io_buffer.size());
+            HeaderFile.open(HeaderFileName.c_str(), std::ofstream::out   |
+                                                    std::ofstream::trunc |
+                                                    std::ofstream::binary);
+            if( ! HeaderFile.good()) FileOpenFailed(HeaderFileName);
+            WriteGenericPlotfileHeaderWithMapped(HeaderFile, nlevels, boxArrays, varnames,
+                                                  time, level_steps, versionName,
+                                                  levelPrefix, mfPrefix, geom);
+        };
+
+        if (AsyncOut::UseAsyncOut()) {
+            AsyncOut::Submit(std::move(f));
+        } else {
+            f();
+        }
+    }
+
+    std::string mf_nodal_prefix = "Nu_nd";
+    for (int level = 0; level <= finest_level; ++level)
+    {
+        if (AsyncOut::UseAsyncOut()) {
+            VisMF::AsyncWrite(*mf[level],
+                              MultiFabFileFullPrefix(level, plotfilename, levelPrefix, mfPrefix),
+                              true);
+            VisMF::AsyncWrite(*mf_nd[level],
+                              MultiFabFileFullPrefix(level, plotfilename, levelPrefix, mf_nodal_prefix),
+                              true);
+        } else {
+            const MultiFab* data;
+            std::unique_ptr<MultiFab> mf_tmp;
+            if (mf[level]->nGrowVect() != 0) {
+                mf_tmp = std::make_unique<MultiFab>(mf[level]->boxArray(),
+                                                    mf[level]->DistributionMap(),
+                                                    mf[level]->nComp(), 0, MFInfo(),
+                                                    mf[level]->Factory());
+                MultiFab::Copy(*mf_tmp, *mf[level], 0, 0, mf[level]->nComp(), 0);
+                data = mf_tmp.get();
+            } else {
+                data = mf[level];
+            }
+            VisMF::Write(*data        , MultiFabFileFullPrefix(level, plotfilename, levelPrefix, mfPrefix));
+            VisMF::Write(*mf_nd[level], MultiFabFileFullPrefix(level, plotfilename, levelPrefix, mf_nodal_prefix));
+        }
+    }
+}
+
+void
+WriteGenericPlotfileHeaderWithMapped (std::ostream &HeaderFile,
+                                            int nlevels,
+                                            const Vector<BoxArray> &bArray,
+                                            const Vector<std::string> &varnames,
+                                            Real time,
+                                            const Vector<int> &level_steps,
+                                            const std::string &versionName,
+                                            const std::string &levelPrefix,
+                                            const std::string &mfPrefix,
+                                            const Vector<Geometry> geom)
+{
+        amrex::Vector<IntVect> ref_ratio(nlevels);
+        for (int i = 0 ; i <nlevels; ++i) {
+            ref_ratio[i] = amrex::IntVect::TheUnitVector();
+        } 
+        BL_ASSERT(nlevels <= bArray.size());
+        BL_ASSERT(nlevels <= ref_ratio.size()+1);
+        BL_ASSERT(nlevels <= level_steps.size());
+        int finest_level = 0;
+        HeaderFile.precision(17);
+
+        // ---- this is the generic plot file type name
+        HeaderFile << versionName << '\n';
+
+        HeaderFile << varnames.size() << '\n';
+
+        for (int ivar = 0; ivar < varnames.size(); ++ivar) {
+            HeaderFile << varnames[ivar] << "\n";
+        }
+        HeaderFile << AMREX_SPACEDIM << '\n';
+        HeaderFile << time << '\n';
+        HeaderFile << finest_level << '\n';
+        for (int i = 0; i < AMREX_SPACEDIM; ++i) {
+            HeaderFile << geom[0].ProbLo(i) << ' ';
+        }
+        HeaderFile << '\n';
+        for (int i = 0; i < AMREX_SPACEDIM; ++i) {
+            HeaderFile << geom[0].ProbHi(i) << ' ';
+        }
+        HeaderFile << '\n';
+        for (int i = 0; i < finest_level; ++i) {
+            HeaderFile << ref_ratio[i][0] << ' ';
+        }
+        HeaderFile << '\n';
+        for (int i = 0; i <= finest_level; ++i) {
+            HeaderFile << geom[i].Domain() << ' ';
+        }
+        HeaderFile << '\n';
+        for (int i = 0; i <= finest_level; ++i) {
+            HeaderFile << level_steps[i] << ' ';
+        }
+        HeaderFile << '\n';
+        for (int i = 0; i <= finest_level; ++i) {
+            for (int k = 0; k < AMREX_SPACEDIM; ++k) {
+                HeaderFile << geom[i].CellSize()[k] << ' ';
+            }
+            HeaderFile << '\n';
+        }
+        HeaderFile << (int) geom[0].Coord() << '\n';
+        HeaderFile << "0\n";
+
+        for (int level = 0; level <= finest_level; ++level) {
+            HeaderFile << level << ' ' << bArray[level].size() << ' ' << time << '\n';
+            HeaderFile << level_steps[level] << '\n';
+
+            const IntVect& domain_lo = geom[level].Domain().smallEnd();
+            for (int i = 0; i < bArray[level].size(); ++i)
+            {
+                // Need to shift because the RealBox ctor we call takes the
+                // physical location of index (0,0,0).  This does not affect
+                // the usual cases where the domain index starts with 0.
+                const Box& b = shift(bArray[level][i], -domain_lo);
+                RealBox loc = RealBox(b, geom[level].CellSize(), geom[level].ProbLo());
+                for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                    HeaderFile << loc.lo(n) << ' ' << loc.hi(n) << '\n';
+                }
+            }
+
+            HeaderFile << MultiFabHeaderPath(level, levelPrefix, mfPrefix) << '\n';
+        }
+        HeaderFile << "1" << "\n";
+        HeaderFile << "3" << "\n";
+        HeaderFile << "amrexvec_nu_x" << "\n";
+        HeaderFile << "amrexvec_nu_y" << "\n";
+        HeaderFile << "amrexvec_nu_z" << "\n";
+        std::string mf_nodal_prefix = "Nu_nd";
+        for (int level = 0; level <= finest_level; ++level) {
+            HeaderFile << MultiFabHeaderPath(level, levelPrefix, mf_nodal_prefix) << '\n';
+        }
+}
+
+
 
 void Test()
 {
@@ -223,7 +434,11 @@ void Test()
     MultiFab a_xyz_loc(ba_nd,dm[lev],AMREX_SPACEDIM,2);
 
     // Annulus
-    if (params.prob_type == ProbType::Torus) {
+    if (params.prob_type == ProbType::Helix) {
+        AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Mapped);
+        AMREX_ALWAYS_ASSERT(AMREX_SPACEDIM==3);
+        InitHelix(a_xyz_loc, geom[lev]);
+    } else if (params.prob_type == ProbType::Torus) {
         AMREX_ALWAYS_ASSERT(params.grid_type == GridType::Mapped);
         AMREX_ALWAYS_ASSERT(AMREX_SPACEDIM==3);
         InitTorus(a_xyz_loc, geom[lev]);
@@ -416,11 +631,12 @@ void Test()
         }
 
 
-    if (nt%20 ==0){
+    if (nt%2 ==0){
+        amrex::Print() << " writing plotfile \n";
         plotfilename = Concatenate("plt", nt, 5);
-        Vector<std::string> varname = {"ux", "uy"};
+        Vector<std::string> varname = {"ux", "uy", "uz"};
         amrex::MultiFab plotmf(ba[0], dm[0], varname.size(), 0 );
-        amrex::average_node_to_cellcenter (plotmf, 0, und, 0, 2, 0);
+        amrex::average_node_to_cellcenter (plotmf, 0, und, 0, 3, 0);
         // if (params.grid_type == GridType::Terrain) {
         //     terrain_pc.WritePlotFile(plotfilename, "particles");
         // } else if (params.grid_type == GridType::Mapped) {
@@ -428,9 +644,48 @@ void Test()
         // } else if (params.grid_type == GridType::Regular) {
         //     regular_pc.WritePlotFile(plotfilename, "particles");
         // }
-        WriteSingleLevelPlotfile(plotfilename, plotmf, varname, geom[0],0.0,0);
-        //WriteSingleLevelPlotfile("plt_grid",a_xyz_loc,{"gridmap",AMREX_D_DECL("x1","y1","z1")},geom,0.0,0);
+        // Make a nodal multifab that stores the location of the grid as x,y,z (3 components)
+        amrex::Vector<amrex::MultiFab> mf_nd(1);
+        if (params.grid_type == GridType::Mapped) {
+            amrex::BoxArray nodal_ba(ba[0]);
+            nodal_ba.surroundingNodes();
+            mf_nd[0].define(nodal_ba,dm[0],3,0);
+            mf_nd[0].setVal(0.);
+            amrex::Print() << nodal_ba[0] << "\n";
+            //Copy data from xyz location mf (copy 3 components)
+            amrex::MultiFab::Copy(mf_nd[0],a_xyz_loc,0,0,3,0);
+            amrex::Real dx = geom[0].CellSizeArray()[0];
+            amrex::Real dy = geom[0].CellSizeArray()[1];
+            amrex::Real dz = geom[0].CellSizeArray()[2];
+            for (amrex::MFIter mfi(mf_nd[0], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+                const amrex::Box & bx = mfi.tilebox();
+                amrex::Array4<amrex::Real> mf_arr = mf_nd[0].array(mfi);
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k) {
+                    mf_arr(i,j,k,0) -= i*dx;
+                    mf_arr(i,j,k,1) -= j*dy;
+                    mf_arr(i,j,k,2) -= k*dz;
+                });
+            }
+        }
+
+
+        const std::string versionName = "HyperCLaw-V1.1";
+        const std::string levelPrefix = "Level_";
+        const std::string mfPrefix = "Cell";
+        const amrex::Vector<std::string> extra_dirs = amrex::Vector<std::string>();
+        Vector<const MultiFab*> mfarr(1,&plotmf);
+        Vector<Geometry> geomarr(1,geom[0]);
+        Vector<int> level_steps(1,nt);
+        Vector<IntVect> ref_ratio;
+        ///WriteSingleLevelPlotfile(plotfilename, plotmf, varname, geom[0],0.0,0);
+        WriteMultiLevelPlotfileWithMapped(plotfilename, 1,
+                                           GetVecOfConstPtrs(mfarr),
+                                           GetVecOfConstPtrs(mf_nd),
+                                           varname,
+                                           nt, level_steps, versionName, levelPrefix, mfPrefix, extra_dirs, geomarr); 
         mapped_pc.WritePlotFile(plotfilename,"particles");
+
+        //WriteSingleLevelPlotfile("plt_grid",a_xyz_loc,{"gridmap",AMREX_D_DECL("x1","y1","z1")},geom,0.0,0);
         }
     } // nt
 //    plotfilename = Concatenate("plt", nt, 5);

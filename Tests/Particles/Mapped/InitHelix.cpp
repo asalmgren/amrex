@@ -4,7 +4,7 @@
 using namespace amrex;
 
 void
-InitTorus (amrex::MultiFab& a_xyz_loc, amrex::Geometry& geom)
+InitHelix (amrex::MultiFab& a_xyz_loc, amrex::Geometry& geom)
 {
     const Real tpi = 2.0* amrex::Math::pi<Real>();
 
@@ -44,7 +44,8 @@ InitTorus (amrex::MultiFab& a_xyz_loc, amrex::Geometry& geom)
            
             loc_arr(i,j,k,0) = cx + (0.1 * xi + 0.1) * cos(tpi * eta);
             loc_arr(i,j,k,1) = cy + (0.1 * xi + 0.1) * sin(tpi * eta);
-            loc_arr(i,j,k,2) = cz + ( xi * 0.1 - 0.1 ) + zeta * 0.1 * (2. + 1. * xi); //3D torus
+            //loc_arr(i,j,k,2) = cz + ( xi * 0.1 - 0.1 ) + zeta * 0.1 * (2. + 1. * xi); 3D torus
+            loc_arr(i,j,k,2) = zeta*0.02 + 0.02*tpi*eta;// ( xi * 0.1 - 0.1 ) + zeta * 0.1 * (2. + 1. * xi) * tpi*eta;
             amrex::Real rad = std::sqrt((loc_arr(i,j,k,0)-0.5)*(loc_arr(i,j,k,0)-0.5) + (loc_arr(i,j,k,1)-0.5)*(loc_arr(i,j,k,1)-0.5)) ;
         });
 

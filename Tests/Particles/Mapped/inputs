@@ -2,11 +2,11 @@ size = (32,32,64 )
 max_grid_size = 128
 is_periodic = (1,1,1)
 num_ppc = 1
-nsteps = 750
+nsteps = 1
 nlevs = 1
 
 grid_type = mapped
 vel_type  = nd
-prob_type = torus
+prob_type = helix
 
 do_plotfile = 1

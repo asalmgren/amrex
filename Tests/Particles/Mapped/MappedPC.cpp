@@ -43,7 +43,7 @@ InitParticles (MultiFab& a_xyz_loc)
 #elif (AMREX_SPACEDIM == 3)
             int k = iv[2];
             //if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) { // FOR EVERYTHING BUT TORUS
-            if (  ( (iv[0] > 1) && (iv[0] < 30) ) && (iv[1] == 0 ) && (iv[2]>1 && iv[2] < 10 )) {  // FOR TORUS
+            if (  ( (iv[0] > 4) && (iv[0] < 28) ) && (iv[1] == 1 ) && (iv[2]>1 && iv[2] < 50 )) {  // FOR TORUS
 #endif
                 int i = iv[0];
                 int j = iv[1];
