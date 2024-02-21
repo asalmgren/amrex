@@ -43,7 +43,7 @@ InitParticles (MultiFab& a_xyz_loc)
 #elif (AMREX_SPACEDIM == 3)
             int k = iv[2];
             //if (iv[0] == 0 && iv[1] == 0 && iv[2] >= dom_lo.z && iv[2] <= dom_hi.z/2) { // FOR EVERYTHING BUT TORUS
-            if (  ( (iv[0] > 1) && (iv[0] < 30) ) && (iv[1] == 0 ) && (iv[2]>1 && iv[2] < 10 )) {  // FOR TORUS
+            if (  ( (iv[0] > 4) && (iv[0] < 28) ) && (iv[1] == 1 ) && (iv[2]>1 && iv[2] < 50 )) {  // FOR TORUS
 #endif
                 int i = iv[0];
                 int j = iv[1];
@@ -274,7 +274,7 @@ MappedPC::AdvectWithUND (MultiFab& vel_nd, int lev, Real dt, const MultiFab& a_x
                     amrex::Real rc = sqrt((p.pos(0)-0.5)*(p.pos(0)-0.5) + (p.pos(1)-0.5)*(p.pos(1)-0.5));
                     amrex::Real theta = std::atan2( (p.pos(2) - 0.5) , (p.pos(1) - 0.5));
                     amrex::Print() << "TO   " << p.pos(0) << " " << p.pos(1) << " " << p.pos(AMREX_SPACEDIM-1) << " " << rc << " " << theta <<
-                                      " WITH VEL " << v[0] << " " << v[1] << " " << v[2] << std::endl; 
+                                      " WITH VEL " << v[0] << " " << v[1] << " " << v[2] << std::endl;
 #endif
                     update_mapped_idata(p,plo,dxi,loc_arr);
 //                    amrex::AllPrintToFile("partpos.txt") << p.pos(0) << " " << p.pos(1) << " " << p.pos(2)<< " \n";
